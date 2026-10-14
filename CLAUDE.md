@@ -29,7 +29,7 @@ Two people build this **simultaneously**. Read this file, `contract/api.md` and 
 
 ## 2. Tech stack (do not change without both agreeing)
 
-- **Backend:** Python 3.11+ (we run 3.13 on Windows), FastAPI, Uvicorn, SQLModel on SQLite, Pydantic v2
+- **Backend:** Python 3.12+ (3.13 recommended, Windows), FastAPI, Uvicorn, SQLModel on SQLite, Pydantic v2
 - **Image and OCR:** opencv-python-headless, numpy, Pillow, EasyOCR (English only)
   - EasyOCR uses the GPU when `torch.cuda.is_available()` (env `OCR_GPU=auto|0|1`), else CPU
   - Fallback OCR: RapidOCR (ONNX, `OCR_ENGINE=rapidocr`), if CPU EasyOCR is above 3 s per image

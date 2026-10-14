@@ -1,4 +1,4 @@
-# Python 3.11+ (tested on 3.13, Windows).
+# Python 3.12+ (3.13 recommended; numpy 2.5 needs >= 3.12). Tested on 3.13, Windows.
 # torch: the default PyPI wheel is CPU-only, which is enough (OCR falls back to CPU).
 # For an NVIDIA GPU, first install:  pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu118
 torch==2.7.1
