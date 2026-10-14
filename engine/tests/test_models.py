@@ -30,3 +30,26 @@ def test_insert_and_read_timestamps_and_duplicates(monkeypatch):
         assert find_duplicates(s, None, "ff00ff00ff00ff00", "app_x") == ["app_m1"]  # identical photo
         monkeypatch.setattr(dup, "get_thresholds", lambda: {"phash_max_distance": -1})  # tuned: disabled
         assert find_duplicates(s, None, "ff00ff00ff00ff00", "app_x") == []
+
+
+def test_citizen_can_profile_and_phone_hmac():
+    import pytest
+    from app.core.models import Citizen
+    from app.core.security import phone_hmac
+
+    create_db()
+    h = phone_hmac("+91 98765 43221")
+    assert h == phone_hmac("9876543221") and "9876543221" not in h and len(h) == 64
+    with pytest.raises(ValueError):
+        phone_hmac("12345")
+    with Session(engine) as s:
+        s.merge(Citizen(id="CAN2026000001", name="KARTHIK R", dob="1998-04-12", phone_hmac=h,
+                        phone_masked="98XXXXXX21", pin_code="641402"))
+        s.merge(Office(id="off_c", name="c", type="esevai_centre_private", taluk="c", lat=0, lng=0))
+        s.merge(Application(id="app_c", citizen_name="KARTHIK R", citizen_dob="1998-04-12", can_id="CAN2026000001",
+                            phone_masked="98XXXXXX21", service="income_certificate", office_id="off_c",
+                            status="submitted", sla_due_at=utcnow()))
+        s.commit()
+        c = s.exec(select(Citizen).where(Citizen.phone_hmac == h)).one()
+        assert c.id == "CAN2026000001"
+        assert s.get(Application, "app_c").can_id == c.id
