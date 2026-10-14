@@ -1,5 +1,5 @@
 {
-  "_note": "Alert thresholds. Every number shown in an alert is computed from data; these only decide when a rule fires.",
+  "_note": "Alert thresholds. Every number shown in an alert is computed from data; these only decide when a rule fires. backlog_growth is cut (kit cut order #3): on synthetic data it fires on random offices.",
   "reject_spike": {
     "window_days": 7,
     "baseline_days": 21,
@@ -10,7 +10,7 @@
     "min_abs_increase": 0.05
   },
   "sla_breach": {"min_breached": 12, "high_breached": 20},
-  "backlog_growth": {"days": 3, "min_total_growth": 15, "high_total_growth": 20},
+  "backlog_growth": {"enabled": false, "days": 3, "min_total_growth": 15, "high_total_growth": 20},
   "duplicate_cluster": {"window_days": 30, "min_applications": 2, "high_applications": 3},
   "user_reported": {"window_hours": 24, "min_reports": 3, "high_reports": 4},
   "interval_seconds": 60
