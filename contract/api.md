@@ -1,6 +1,9 @@
 # SevaiCheck API Contract
 
-**Version: 1.0** (bump on every change; see the CLAUDE.md section on the contract change protocol)
+**Version: 1.1** (bump on every change; see the CLAUDE.md section on the contract change protocol)
+
+**Changelog**
+- 1.1: `Document.declared_type` + slot grouping by declared type; `AADHAAR_BACK_MISSING` timing rule; nullable quality fields; `name_score` and multi-document tier definitions; `ExtractedDoc` fields spelled out.
 
 ## Conventions
 
@@ -66,6 +69,9 @@ Messages (`msg_en`, `msg_ta`) live in `contract/messages.json`, and the backend 
 
 **AppStatus rule** (implemented by Person 2 in `ops/status.py`):
 - The required documents are `aadhaar_front` + `aadhaar_back` + (`pan` or `voter_id`).
+- **Slots are keyed by `declared_type`**, not the detected `doc_type`. A quality early-return has `doc_type = "unknown"`, but it still belongs to the slot the operator uploaded into. "Latest document per slot" and the resubmission counter both use `declared_type`.
+- **`AADHAAR_BACK_MISSING` while collecting:** the engine always reports it when the front is present and the back is absent. Ops treats it as blocking **only once every other required slot has been attempted** (or the operator presses "Finish"). Before that, the application stays `submitted`, and no notification is sent for it.
+- Notifications are sent only on a **transition into** `needs_fix`, not on every upload that stays `needs_fix`.
 - `needs_fix` if any latest document is `fixable` or `invalid`, or if there is a blocking application-level issue.
 - `ready_for_officer` if every required document is present and `accepted`, and there are no blocking application-level issues.
 - `submitted` otherwise (still collecting documents).
@@ -98,6 +104,8 @@ Messages (`msg_en`, `msg_ta`) live in `contract/messages.json`, and the backend 
   "timings_ms": {"quality": 180, "ocr": 0, "total": 195}
 }
 ```
+When `card_found` is `false`, the measured quality fields (`blur_score`, `glare_fraction`, `brightness`, `skew_deg`, `card_width_px`) are `null`. On a quality early-return, `doc_type` is `"unknown"` because classification did not run.
+
 When OCR ran, these become:
 ```json
 "fields": {"id_number_display": "XXXX XXXX 4321", "name": "R. KARTHIK",
@@ -114,6 +122,9 @@ When OCR ran, these become:
  "names_compared": ["R. KARTHIK", "KARTHIK RAJENDRAN"],
  "dob_match": true, "issues": [Issue]}
 ```
+- `name_score` is the rapidfuzz `token_sort_ratio` of the two **full, normalised** name strings (0–100). When an initial was expanded, the expansion is recorded in the `NAME_LIKELY_MATCH` evidence (`"initial_expanded": "R→RAJENDRAN"`), and the score is still the full-string score.
+- With more than two named documents, the Aadhaar front name is compared with each other document, and the **worst** pair (mismatch < likely_match < match) is reported.
+- `name_score`, `names_compared` and `dob_match` are `null` / `[]` / `null` when `name_tier` is `not_enough_data`.
 
 ### Office
 ```json
@@ -205,7 +216,7 @@ This is produced by Person 2's `ops/metrics_ops.py`.
 
 | # | Method and path | Owner | Request | Response |
 |---|---|---|---|---|
-| 1 | `GET /api/health` | P1 | none | `{"status":"ok","ocr_engine":"easyocr","version":"1.0"}` |
+| 1 | `GET /api/health` | P1 | none | `{"status":"ok","ocr_engine":"easyocr","ocr_gpu":true,"version":"1.1"}` |
 | 2 | `POST /api/validate` | P1 | multipart `file`, optional form `declared_type` | `ValidationResult` (not persisted) |
 | 3 | `GET /api/metrics/detection` | P1 | none | `DetectionMetrics` (reads `engine/evaluation/results.json`, or the fixture if that file is missing) |
 | 4 | `GET /api/offices` | P2 | none | `Office[]` |
@@ -237,7 +248,9 @@ def validate_image(image_bytes: bytes, declared_type: str | None = None) -> Vali
 #  ValidationOutcome.aadhaar_hmac  -> str | None   (hex; only for aadhaar_front/back)
 #  ValidationOutcome.phash         -> str | None   (perceptual hash of warped card)
 #  ValidationOutcome.card_jpeg     -> bytes | None (perspective-corrected card for officer view)
-#  ValidationOutcome.extracted     -> ExtractedDoc | None (unmasked-safe fields: name, dob, gender, doc_type)
+#  ValidationOutcome.extracted     -> ExtractedDoc | None (set whenever OCR ran)
+#  ExtractedDoc fields: doc_type, declared_type, name, dob (ISO or None), gender, father_name, id_last4
+#  (never the full ID number)
 
 def check_consistency(docs: list[ExtractedDoc]) -> ConsistencyResult: ...
 #  Pass the latest accepted/extracted doc of each type in the application.
@@ -267,10 +280,12 @@ def delete_image(document_id: str) -> None: ...
 |---|---|
 | `Office` | id, name, type, taluk, lat, lng |
 | `Application` | id, citizen_name, phone_masked, service, office_id, status, created_at, updated_at, sla_due_at, resubmissions, decision_action, decision_reason, decision_note, decided_at, is_seed |
-| `Document` | id, application_id, doc_type, status, issues_json, fields_json, aadhaar_hmac, phash, image_path, uploaded_at, is_seed |
+| `Document` | id, application_id, doc_type, declared_type, status, issues_json, fields_json, extracted_json, aadhaar_hmac, phash, image_path, uploaded_at, is_seed |
 | `AppEvent` | id, application_id, at, event, actor, note |
 | `Alert` | id, rule, severity, office_id, title_en, detail_en, evidence_json, suggested_action_en, status, created_at, dedupe_key |
 | `IssueReport` | id, office_id, category, description, reporter_role, created_at |
 | `Notification` | id, application_id, channel, to_masked, body_en, body_ta, created_at |
 
 Seeded historical documents have `image_path = NULL` and `is_seed = true`.
+
+`Document.extracted_json` stores the `ExtractedDoc` (no full ID number) so ops can recompute consistency from the latest document of each slot without re-running OCR.
