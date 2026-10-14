@@ -15,7 +15,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:8000',
+      // 127.0.0.1, not localhost: on Windows "localhost" tries IPv6 ::1 first, and uvicorn listens on IPv4 only.
+      '/api': 'http://127.0.0.1:8000',
     },
     // fixture mode imports JSON from ../contract
     fs: { allow: ['..'] },
