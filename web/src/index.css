@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/inter";
 @import "@fontsource/noto-sans-tamil/400.css";
 @import "@fontsource/noto-sans-tamil/600.css";
 @import "@fontsource/noto-sans-tamil/700.css";
@@ -12,9 +11,9 @@
 
 @theme inline {
     --font-heading: var(--font-sans);
-    /* Latin glyphs come from Inter; Tamil glyphs fall through to Noto Sans Tamil */
-    --font-sans: 'Inter Variable', 'Noto Sans Tamil', system-ui, sans-serif;
-    --font-tamil: 'Noto Sans Tamil', 'Inter Variable', system-ui, sans-serif;
+    /* Lexend, the TN e-Sevai heading/body font; Tamil glyphs fall through to Noto Sans Tamil */
+    --font-sans: 'Lexend', 'Noto Sans Tamil', system-ui, sans-serif;
+    --font-tamil: 'Noto Sans Tamil', 'Lexend', system-ui, sans-serif;
 
     --color-success: var(--success);
     --color-success-soft: var(--success-soft);
@@ -55,46 +54,49 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Gov-trust palette: off-white surfaces, one navy accent, status colours. Light theme only. */
+/* TN e-Sevai palette: government blue primary, saffron/green tricolor accents, status colours. Light theme only. */
 :root {
-    --background: #f8f9fb;
-    --foreground: #111827;
+    --background: #f8fafc;
+    --foreground: #0f172a;
     --card: #ffffff;
-    --card-foreground: #111827;
+    --card-foreground: #0f172a;
     --popover: #ffffff;
-    --popover-foreground: #111827;
-    --primary: #1e3a8a;
+    --popover-foreground: #0f172a;
+    --primary: #0b5bb5;
     --primary-foreground: #ffffff;
     --secondary: #eef2f7;
-    --secondary-foreground: #1f2937;
+    --secondary-foreground: #0f172a;
     --muted: #f1f3f6;
-    --muted-foreground: #5b6472;
-    --accent: #e8eef9;
-    --accent-foreground: #1e3a8a;
-    --destructive: #b91c1c;
-    --border: #e3e6eb;
+    --muted-foreground: #475569;
+    --accent: #e8f0fb;
+    --accent-foreground: #0b5bb5;
+    --destructive: #dc2626;
+    --border: #e2e8f0;
     --input: #d6dae1;
-    --ring: #1e3a8a;
+    --ring: #0b5bb5;
 
-    --success: #15803d;
+    --success: #138808;
     --success-soft: #dcfce7;
     --warning: #b45309;
     --warning-soft: #fef3c7;
-    --danger: #b91c1c;
+    --danger: #dc2626;
     --danger-soft: #fee2e2;
 
     /* Chart series (validated categorical slots; aqua < 3:1 on white, so charts ship a legend + table view) */
-    --series-1: #2a78d6;
-    --series-2: #1baf7a;
-    --series-3: #eb6834;
+    --series-1: #0b5bb5;
+    --series-2: #138808;
+    --series-3: #d97706;
     --grid: #e8ebef;
 
-    --chart-1: #1e3a8a;
-    --chart-2: #0f766e;
+    --chart-1: #0b5bb5;
+    --chart-2: #138808;
     --chart-3: #d97706;
-    --chart-4: #b91c1c;
+    --chart-4: #dc2626;
     --chart-5: #64748b;
     --radius: 0.5rem;
+
+    --saffron: #ff9933;
+    --tn-green: #138808;
 }
 
 @layer base {
@@ -117,59 +119,6 @@
   &::-webkit-scrollbar {
     display: none;
   }
-}
-
-/* ---- esevai skin (Frontend v2: TN e-Sevai portal) -----------------------------------------------
-   Scoped under :root[data-skin="esevai"] so v1 (:root defaults) and v2 can coexist during review.
-   shadcn portal components (Dialog/Sheet/Select/Sonner) render at document root, so they pick this
-   up whenever a v2 route has set the skin, same as any other token override. */
-:root[data-skin="esevai"] {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #0b5bb5;
-  --primary-foreground: #ffffff;
-  --secondary: #eef2f7;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f3f6;
-  --muted-foreground: #475569;
-  --accent: #e8f0fb;
-  --accent-foreground: #0b5bb5;
-  --destructive: #dc2626;
-  --border: #e2e8f0;
-  --input: #d6dae1;
-  --ring: #0b5bb5;
-
-  --success: #138808;
-  --success-soft: #dcfce7;
-  --warning: #b45309;
-  --warning-soft: #fef3c7;
-  --danger: #dc2626;
-  --danger-soft: #fee2e2;
-
-  --series-1: #0b5bb5;
-  --series-2: #138808;
-  --series-3: #d97706;
-  --grid: #e8ebef;
-
-  --chart-1: #0b5bb5;
-  --chart-2: #138808;
-  --chart-3: #d97706;
-  --chart-4: #dc2626;
-  --chart-5: #64748b;
-  --radius: 0.5rem;
-
-  --saffron: #ff9933;
-  --tn-green: #138808;
-
-  --font-sans: 'Lexend', 'Noto Sans Tamil', system-ui, sans-serif;
-}
-
-:root[data-skin="esevai"] body {
-  font-family: var(--font-sans);
 }
 
 @media (prefers-reduced-motion: reduce) {
