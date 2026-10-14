@@ -13,5 +13,6 @@
  "phash_max_distance": -1,
  "name_match_min": 92,
  "name_likely_min": 78,
- "crop_aspect_tol": 0.26
+ "crop_aspect_tol": 0.26,
+ "page_sharpness_min": 45
 }

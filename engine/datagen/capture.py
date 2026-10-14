@@ -97,8 +97,8 @@ class CaptureSpec:
     extras: dict = field(default_factory=dict)
 
 
-def _card_quad(rng: random.Random, spec: CaptureSpec, w: float) -> np.ndarray:
-    h = w / (1012 / 638)
+def _card_quad(rng: random.Random, spec: CaptureSpec, w: float, aspect: float = 1012 / 638) -> np.ndarray:
+    h = w / aspect
     rot = np.deg2rad(spec.rotation_deg if spec.rotation_deg is not None else rng.uniform(-10, 10))
     corners = np.array([[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]], np.float32)
     corners += np.array([[rng.uniform(-0.05, 0.05) * w, rng.uniform(-0.05, 0.05) * h] for _ in range(4)],
@@ -156,7 +156,7 @@ def capture(card: Image.Image, spec: CaptureSpec, bg_set: str, rng: random.Rando
     canvas = bg_fn(nrng, CANVAS_H, CANVAS_W).astype(np.float32)
 
     w = spec.card_width or rng.uniform(900, 1500)
-    quad = _card_quad(rng, spec, w)
+    quad = _card_quad(rng, spec, w, card.width / card.height)
     src = np.array([[0, 0], [card.width, 0], [card.width, card.height], [0, card.height]], np.float32)
     m = cv2.getPerspectiveTransform(src, quad)
     card_bgr = cv2.cvtColor(np.array(card), cv2.COLOR_RGB2BGR).astype(np.float32)
