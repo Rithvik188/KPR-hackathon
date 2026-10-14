@@ -58,4 +58,6 @@ if settings.serve_web:
         candidate = (dist / path).resolve()
         if path and candidate.is_file() and dist in candidate.parents:
             return FileResponse(candidate)
+        if path.startswith("assets/") or "." in path.rsplit("/", 1)[-1]:
+            raise api_error(404, "NOT_FOUND", f"No file /{path}")  # missing asset: 404, not index.html
         return FileResponse(dist / "index.html")  # SPA fallback for client-side routes
