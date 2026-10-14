@@ -4,7 +4,7 @@ from app.core.config import get_settings
 
 router = APIRouter(tags=["engine"])
 
-API_VERSION = "1.3"
+API_VERSION = "1.4"
 
 
 @router.get("/health")
