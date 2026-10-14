@@ -26,11 +26,13 @@ class OfficeOut(BaseModel):
 
 
 class CreateApplicationIn(BaseModel):
-    citizen_name: str = Field(min_length=1, max_length=100)
-    phone: str = Field(min_length=10, max_length=16)
+    # With `can` (contract v1.5) name/DOB/phone come from the CAN profile and these typed values are ignored.
+    citizen_name: str | None = Field(default=None, min_length=1, max_length=100)
+    phone: str | None = Field(default=None, min_length=10, max_length=16)
     service: Service
     office_id: str
     citizen_dob: str | None = None  # ISO date typed by the operator (contract v1.4)
+    can: str | None = Field(default=None, max_length=20)
 
 
 class OfficerActionIn(BaseModel):
@@ -44,6 +46,7 @@ class ApplicationSummaryOut(BaseModel):
     id: str
     citizen_name: str
     citizen_dob: str | None = None
+    can_id: str | None = None  # contract v1.5
     phone_masked: str
     service: Service
     office_id: str
