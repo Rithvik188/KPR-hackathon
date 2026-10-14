@@ -57,6 +57,7 @@ class ApplicationSummaryOut(BaseModel):
 class DocumentOut(BaseModel):
     id: str
     doc_type: DocType
+    declared_type: str | None  # contract v1.3: the slot the operator uploaded into
     status: DocStatus
     issues: list[Issue]
     fields: dict[str, Any] | None
@@ -95,6 +96,83 @@ class UploadResultOut(BaseModel):
     validation: ValidationResult
     application: ApplicationSummaryOut
     consistency: ConsistencyResult
+
+
+class AlertOut(BaseModel):
+    id: str
+    rule: Literal["REJECT_SPIKE", "SLA_BREACH", "BACKLOG_GROWTH", "DUPLICATE_CLUSTER", "USER_REPORTED"]
+    severity: Literal["high", "medium", "low"]
+    office_id: str | None
+    office_name: str | None
+    title_en: str
+    detail_en: str
+    evidence: dict[str, Any]
+    suggested_action_en: str
+    status: Literal["open", "acknowledged"]
+    created_at: str
+
+
+class IssueReportIn(BaseModel):
+    office_id: str
+    category: IssueCategory
+    description: str = Field(min_length=1, max_length=500)
+    reporter_role: ReporterRole
+
+
+class IssueReportOut(IssueReportIn):
+    id: str
+    created_at: str
+
+
+class OpsTotals(BaseModel):
+    applications: int
+    documents: int
+    first_time_right_rate: float
+    avg_resubmissions: float
+    backlog_now: int
+    sla_breaches_now: int
+
+
+class OpsDaily(BaseModel):
+    date: str
+    submitted: int
+    approved: int
+    rejected: int
+    backlog: int
+
+
+class OpsOffice(BaseModel):
+    office_id: str
+    office_name: str
+    taluk: str
+    lat: float
+    lng: float
+    submissions: int
+    reject_rate: float
+    backlog: int
+    top_issue: str | None
+
+
+class OpsIssueCount(BaseModel):
+    code: str
+    count: int
+
+
+class OpsProjection(BaseModel):
+    baseline_reject_rate: float
+    projected_reject_rate: float
+    prevented_rejections: int
+    assumptions_en: str
+
+
+class OperationsMetricsOut(BaseModel):
+    days: int
+    source: str
+    totals: OpsTotals
+    daily: list[OpsDaily]
+    by_office: list[OpsOffice]
+    by_issue: list[OpsIssueCount]
+    projection: OpsProjection
 
 
 class NotificationOut(BaseModel):

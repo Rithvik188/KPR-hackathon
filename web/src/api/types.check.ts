@@ -18,4 +18,7 @@ export const contractChecks: [
   Fits<S['ValidationResult'], T.ValidationResult>,
   Fits<S['ConsistencyResult'], T.ConsistencyResult>,
   Fits<S['NotificationOut'], T.Notification>,
-] = [true, true, true, true, true, true, true, true]
+  Fits<S['AlertOut'], T.Alert>,
+  Fits<S['IssueReportOut'], T.IssueReport>,
+  Fits<S['OperationsMetricsOut'], T.OperationsMetrics>,
+] = [true, true, true, true, true, true, true, true, true, true, true]
