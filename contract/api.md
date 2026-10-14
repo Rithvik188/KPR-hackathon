@@ -1,8 +1,9 @@
 # SevaiCheck API Contract
 
-**Version: 1.2** (bump on every change; see the CLAUDE.md section on the contract change protocol)
+**Version: 1.3** (bump on every change; see the CLAUDE.md section on the contract change protocol)
 
 **Changelog**
+- 1.3: `ApplicationDetail.documents[].declared_type` (string or null).
 - 1.2: `Application.consistency_json` (optional, latest ConsistencyResult cached by ops).
 - 1.1: `Document.declared_type` + slot grouping by declared type; `AADHAAR_BACK_MISSING` timing rule; nullable quality fields; `name_score` and multi-document tier definitions; `ExtractedDoc` fields spelled out.
 
@@ -146,7 +147,7 @@ When OCR ran, these become:
 ### ApplicationDetail
 ApplicationSummary plus:
 ```json
-{"documents": [{"id": "doc_1", "doc_type": "aadhaar_front", "status": "accepted",
+{"documents": [{"id": "doc_1", "doc_type": "aadhaar_front", "declared_type": "aadhaar_front", "status": "accepted",
                 "issues": [Issue], "fields": {...}, "uploaded_at": "...", "image_available": true}],
  "consistency": ConsistencyResult,
  "history": [{"at": "...", "event": "document_uploaded", "actor": "operator", "note": "aadhaar_front: fixable (BLUR)"}],

@@ -19,12 +19,14 @@ def load_labels(split: str) -> list[dict]:
 
 
 def _measure_one(path: str) -> dict:
+    from app.validation.api import _phash
     from app.validation.quality import measure
 
     data = Path(path).read_bytes()
     t0 = time.perf_counter()
-    m, _ = measure(data)
+    m, card = measure(data)
     m["quality_ms"] = (time.perf_counter() - t0) * 1000
+    m["phash"] = _phash(card) if card is not None else None
     return m
 
 
