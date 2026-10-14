@@ -85,7 +85,7 @@ Both laptops run **Windows**. Use PowerShell or Git Bash. The repo lives at `C:\
 ```powershell
 # one-time
 copy .env.example .env                              # then fill secrets (see INTEGRATION.md)
-cd engine; python -m venv .venv; .venv\Scriptsctivate; pip install -r requirements.txt
+cd engine; python -m venv .venv; .venv\Scripts\activate; pip install -r requirements.txt
 cd web; npm install
 
 # daily
