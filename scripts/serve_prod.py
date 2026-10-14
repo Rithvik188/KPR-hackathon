@@ -38,7 +38,7 @@ def main() -> int:
         print("! web/dist/index.html missing")
         return 1
     env = {**os.environ, "SERVE_WEB": "1"}
-    print(f"> serving UI + API on http://0.0.0.0:{port}  (Ctrl-C to stop; then `ngrok http {port}`)")
+    print(f"> serving UI + API on http://0.0.0.0:{port}  (Ctrl-C to stop; then `ngrok http 127.0.0.1:{port}`)")
     try:
         return subprocess.run([venv_python(), "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", port],
                               cwd=ENGINE, env=env).returncode

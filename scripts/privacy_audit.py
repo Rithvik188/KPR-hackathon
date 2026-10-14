@@ -4,7 +4,7 @@ Searches for (a) every synthetic Aadhaar number we generated (exact, spaced and 
 (b) any 12-digit run not embedded in a hex string (HMACs are hex, so a plain \\d{12} grep would
 false-positive on them).
 
-Usage:  python scripts/privacy_audit.py [--base http://localhost:8000] [--logs path ...]
+Usage:  python scripts/privacy_audit.py [--base http://127.0.0.1:8000] [--logs path ...]
 Exit code 1 on any leak.
 """
 import json
@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = ROOT / "engine"
-BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "http://localhost:8000"
+BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "http://127.0.0.1:8000"
 TWELVE = re.compile(r"(?<![0-9A-Fa-f])(\d{4}[ \-]?\d{4}[ \-]?\d{4})(?![0-9A-Fa-f])")
 
 
@@ -75,16 +75,29 @@ def main() -> int:
         leaks += scan_text(f"log {lp}", Path(lp).read_text(encoding="utf-8", errors="ignore"), nums)
     for f in (ENGINE / "evaluation").glob("*.json"):
         leaks += scan_text(f"file {f.name}", f.read_text(encoding="utf-8"), nums)
-    for path in ["/api/applications?limit=200", "/api/alerts", "/api/notifications", "/api/metrics/detection",
+    app_ids, offset = [], 0
+    try:  # every application, page by page (seeded DBs hold thousands)
+        while True:
+            with urllib.request.urlopen(f"{BASE}/api/applications?limit=200&offset={offset}", timeout=60) as r:
+                body = r.read().decode("utf-8", errors="ignore")
+            leaks += scan_text(f"api /applications?offset={offset}", body, nums)
+            page = json.loads(body)
+            app_ids += [i["id"] for i in page.get("items", [])]
+            offset += 200
+            if not page.get("items") or offset >= page.get("total", 0):
+                break
+        for app_id in app_ids:
+            with urllib.request.urlopen(f"{BASE}/api/applications/{app_id}", timeout=30) as r:
+                leaks += scan_text(f"api /applications/{app_id}", r.read().decode("utf-8", errors="ignore"), nums)
+        print(f"scanned {len(app_ids)} applications (list + detail)")
+    except Exception as e:  # noqa: BLE001
+        print(f"(skip applications: {e})")
+    for path in ["/api/alerts", "/api/notifications", "/api/metrics/detection",
                  "/api/metrics/operations", "/api/issues"]:
         try:
             with urllib.request.urlopen(BASE + path, timeout=30) as r:
                 body = r.read().decode("utf-8", errors="ignore")
             leaks += scan_text(f"api {path}", body, nums)
-            if path.startswith("/api/applications"):
-                for item in json.loads(body).get("items", []):
-                    with urllib.request.urlopen(f"{BASE}/api/applications/{item['id']}", timeout=30) as r:
-                        leaks += scan_text(f"api /applications/{item['id']}", r.read().decode(), nums)
         except Exception as e:  # noqa: BLE001
             print(f"(skip {path}: {e})")
     for leak in leaks:
