@@ -159,10 +159,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Alerts */
+        get: operations["list_alerts_api_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/alerts/{alert_id}/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ack Alert */
+        post: operations["ack_alert_api_alerts__alert_id__ack_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Issues */
+        get: operations["list_issues_api_issues_get"];
+        put?: never;
+        /** Create Issue */
+        post: operations["create_issue_api_issues_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/metrics/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Operations Metrics */
+        get: operations["operations_metrics_api_metrics_operations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AlertOut */
+        AlertOut: {
+            /** Id */
+            id: string;
+            /**
+             * Rule
+             * @enum {string}
+             */
+            rule: "REJECT_SPIKE" | "SLA_BREACH" | "BACKLOG_GROWTH" | "DUPLICATE_CLUSTER" | "USER_REPORTED";
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+            /** Office Id */
+            office_id: string | null;
+            /** Office Name */
+            office_name: string | null;
+            /** Title En */
+            title_en: string;
+            /** Detail En */
+            detail_en: string;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /** Suggested Action En */
+            suggested_action_en: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "acknowledged";
+            /** Created At */
+            created_at: string;
+        };
         /** ApplicationDetailOut */
         ApplicationDetailOut: {
             /** Id */
@@ -317,6 +422,8 @@ export interface components {
              * @enum {string}
              */
             doc_type: "aadhaar_front" | "aadhaar_back" | "pan" | "voter_id" | "unknown";
+            /** Declared Type */
+            declared_type: string | null;
             /**
              * Status
              * @enum {string}
@@ -371,6 +478,44 @@ export interface components {
             evidence?: {
                 [key: string]: unknown;
             };
+        };
+        /** IssueReportIn */
+        IssueReportIn: {
+            /** Office Id */
+            office_id: string;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "scanner_problem" | "long_wait" | "wrong_rejection" | "other";
+            /** Description */
+            description: string;
+            /**
+             * Reporter Role
+             * @enum {string}
+             */
+            reporter_role: "citizen" | "operator" | "officer";
+        };
+        /** IssueReportOut */
+        IssueReportOut: {
+            /** Office Id */
+            office_id: string;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "scanner_problem" | "long_wait" | "wrong_rejection" | "other";
+            /** Description */
+            description: string;
+            /**
+             * Reporter Role
+             * @enum {string}
+             */
+            reporter_role: "citizen" | "operator" | "officer";
+            /** Id */
+            id: string;
+            /** Created At */
+            created_at: string;
         };
         /** NotificationOut */
         NotificationOut: {
@@ -428,6 +573,88 @@ export interface components {
             reason_code?: string | null;
             /** Note */
             note?: string | null;
+        };
+        /** OperationsMetricsOut */
+        OperationsMetricsOut: {
+            /** Days */
+            days: number;
+            /** Source */
+            source: string;
+            totals: components["schemas"]["OpsTotals"];
+            /** Daily */
+            daily: components["schemas"]["OpsDaily"][];
+            /** By Office */
+            by_office: components["schemas"]["OpsOffice"][];
+            /** By Issue */
+            by_issue: components["schemas"]["OpsIssueCount"][];
+            projection: components["schemas"]["OpsProjection"];
+        };
+        /** OpsDaily */
+        OpsDaily: {
+            /** Date */
+            date: string;
+            /** Submitted */
+            submitted: number;
+            /** Approved */
+            approved: number;
+            /** Rejected */
+            rejected: number;
+            /** Backlog */
+            backlog: number;
+        };
+        /** OpsIssueCount */
+        OpsIssueCount: {
+            /** Code */
+            code: string;
+            /** Count */
+            count: number;
+        };
+        /** OpsOffice */
+        OpsOffice: {
+            /** Office Id */
+            office_id: string;
+            /** Office Name */
+            office_name: string;
+            /** Taluk */
+            taluk: string;
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+            /** Submissions */
+            submissions: number;
+            /** Reject Rate */
+            reject_rate: number;
+            /** Backlog */
+            backlog: number;
+            /** Top Issue */
+            top_issue: string | null;
+        };
+        /** OpsProjection */
+        OpsProjection: {
+            /** Baseline Reject Rate */
+            baseline_reject_rate: number;
+            /** Projected Reject Rate */
+            projected_reject_rate: number;
+            /** Prevented Rejections */
+            prevented_rejections: number;
+            /** Assumptions En */
+            assumptions_en: string;
+        };
+        /** OpsTotals */
+        OpsTotals: {
+            /** Applications */
+            applications: number;
+            /** Documents */
+            documents: number;
+            /** First Time Right Rate */
+            first_time_right_rate: number;
+            /** Avg Resubmissions */
+            avg_resubmissions: number;
+            /** Backlog Now */
+            backlog_now: number;
+            /** Sla Breaches Now */
+            sla_breaches_now: number;
         };
         /** Quality */
         Quality: {
@@ -833,6 +1060,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_alerts_api_alerts_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ack_alert_api_alerts__alert_id__ack_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_issues_api_issues_get: {
+        parameters: {
+            query?: {
+                office_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueReportOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_issue_api_issues_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssueReportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    operations_metrics_api_metrics_operations_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationsMetricsOut"];
                 };
             };
             /** @description Validation Error */

@@ -4,7 +4,9 @@ import { TopBar } from '@/components/TopBar'
 import { useLang } from '@/i18n'
 import { ComingSoon } from '@/pages/ComingSoon'
 import { CounterPage } from '@/pages/counter/CounterPage'
+import { AdminPage } from '@/pages/admin/AdminPage'
 import { OfficerPage } from '@/pages/officer/OfficerPage'
+import { ReportPage } from '@/pages/ReportPage'
 
 function Layout() {
   return (
@@ -25,9 +27,9 @@ export default function App() {
         <Route index element={<Navigate to="/counter" replace />} />
         <Route path="counter" element={<CounterPage />} />
         <Route path="officer" element={<OfficerPage />} />
-        <Route path="admin" element={<ComingSoon title={t('nav.admin')} />} />
+        <Route path="admin" element={<AdminPage />} />
         <Route path="metrics" element={<ComingSoon title={t('nav.metrics')} />} />
-        <Route path="report" element={<ComingSoon title={t('nav.report')} />} />
+        <Route path="report" element={<ReportPage />} />
         <Route path="*" element={<Navigate to="/counter" replace />} />
       </Route>
     </Routes>

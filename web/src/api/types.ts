@@ -87,6 +87,8 @@ export interface ApplicationSummary {
 export interface ApplicationDocument {
   id: string
   doc_type: DocType
+  /** contract v1.3: the slot the operator uploaded into (doc_type is "unknown" on a quality early-return) */
+  declared_type: string | null
   status: DocStatus
   issues: Issue[]
   fields: DocFields | null

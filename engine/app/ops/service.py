@@ -92,7 +92,8 @@ def summary(app: Application, office_name: str, docs: list[Document]) -> Applica
 
 
 def _document_out(doc: Document) -> DocumentOut:
-    return DocumentOut(id=doc.id, doc_type=doc.doc_type, status=doc.status, issues=issues_of(doc),
+    return DocumentOut(id=doc.id, doc_type=doc.doc_type, declared_type=doc.declared_type, status=doc.status,
+                       issues=issues_of(doc),
                        fields=json.loads(doc.fields_json) if doc.fields_json else None,
                        uploaded_at=iso(doc.uploaded_at),
                        image_available=bool(doc.image_path) and Path(doc.image_path).exists())

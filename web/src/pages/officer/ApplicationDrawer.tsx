@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { documentImageUrl, getApplication } from '@/api/client'
-import type { ApplicationDetail, ApplicationDocument } from '@/api/types'
+import type { ApplicationDetail, ApplicationDocument, DocType } from '@/api/types'
 import { ConsistencyCard } from '@/components/ConsistencyCard'
 import { FlagChips } from '@/components/FlagChips'
 import { OfficerIssueList } from '@/components/IssueList'
@@ -45,7 +45,7 @@ function DocumentCard({ doc, decided }: { doc: ApplicationDocument; decided: boo
       <CardImage doc={doc} decided={decided} />
       <div className="min-w-0 space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-medium">{t(`doc.${doc.doc_type}`)}</p>
+          <p className="font-medium">{t(`doc.${(doc.declared_type ?? doc.doc_type) as DocType}`)}</p>
           <DocStatusBadge status={doc.status} />
         </div>
         {doc.fields && <FieldGrid fields={doc.fields} />}
