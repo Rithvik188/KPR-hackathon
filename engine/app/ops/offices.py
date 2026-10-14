@@ -1,4 +1,11 @@
-"""The 18 Coimbatore district offices (approximate coordinates, fine for a demo map) and GET /offices."""
+"""The 18 Coimbatore district offices (approximate coordinates, fine for a demo map) and GET /offices.
+
+Real e-Sevai centres are run either by the government or by private franchise operators (per TNeGA, roughly
+6,000 govt-run vs 26,500 private district-wide). We mark a few of our 8 e-Sevai centres "esevai_centre_private"
+so the centre-operator login can show the right kind of centre. `Office.type` is a plain string column (no DB
+enum), so this needed no model change; `contract/api.md` documents the third OfficeType value (P1, additive).
+Offices used by the seeded demo stories keep "esevai_centre" so nothing about those stories changes.
+"""
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
@@ -12,19 +19,19 @@ router = APIRouter(tags=["ops"])
 OFFICES: list[tuple[str, str, str, str, float, float]] = [
     ("off_cbe_north_to", "Taluk Office – Coimbatore North", "taluk_office", "Coimbatore North", 11.040, 76.950),
     ("off_gandhipuram_es", "e-Sevai Centre – Gandhipuram", "esevai_centre", "Coimbatore North", 11.017, 76.968),
-    ("off_saibaba_es", "e-Sevai Centre – Saibaba Colony", "esevai_centre", "Coimbatore North", 11.025, 76.940),
+    ("off_saibaba_es", "e-Sevai Centre – Saibaba Colony", "esevai_centre_private", "Coimbatore North", 11.025, 76.940),
     ("off_cbe_south_to", "Taluk Office – Coimbatore South", "taluk_office", "Coimbatore South", 10.990, 76.962),
     ("off_podanur_es", "e-Sevai Centre – Podanur", "esevai_centre", "Coimbatore South", 10.965, 76.980),
     ("off_perur_to", "Taluk Office – Perur", "taluk_office", "Perur", 10.975, 76.915),
     ("off_madukkarai_to", "Taluk Office – Madukkarai", "taluk_office", "Madukkarai", 10.906, 76.960),
     ("off_sulur_to", "Taluk Office – Sulur", "taluk_office", "Sulur", 11.024, 77.125),
-    ("off_sulur_es1", "e-Sevai Centre – Sulur 1", "esevai_centre", "Sulur", 11.030, 77.118),
+    ("off_sulur_es1", "e-Sevai Centre – Sulur 1", "esevai_centre_private", "Sulur", 11.030, 77.118),
     ("off_sulur_es2", "e-Sevai Centre – Sulur 2", "esevai_centre", "Sulur", 11.0247, 77.1256),
     ("off_annur_to", "Taluk Office – Annur", "taluk_office", "Annur", 11.232, 77.105),
     ("off_mtp_to", "Taluk Office – Mettupalayam", "taluk_office", "Mettupalayam", 11.299, 76.935),
     ("off_mtp_es", "e-Sevai Centre – Mettupalayam", "esevai_centre", "Mettupalayam", 11.305, 76.942),
     ("off_pollachi_to", "Taluk Office – Pollachi", "taluk_office", "Pollachi", 10.658, 77.008),
-    ("off_pollachi_es", "e-Sevai Centre – Pollachi", "esevai_centre", "Pollachi", 10.662, 77.012),
+    ("off_pollachi_es", "e-Sevai Centre – Pollachi", "esevai_centre_private", "Pollachi", 10.662, 77.012),
     ("off_kinathu_to", "Taluk Office – Kinathukadavu", "taluk_office", "Kinathukadavu", 10.822, 77.017),
     ("off_anaimalai_to", "Taluk Office – Anaimalai", "taluk_office", "Anaimalai", 10.583, 76.938),
     ("off_valparai_to", "Taluk Office – Valparai", "taluk_office", "Valparai", 10.327, 76.955),

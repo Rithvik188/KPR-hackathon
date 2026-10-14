@@ -31,14 +31,14 @@ function readRole(): Stage | null {
   }
 }
 
-export function OfficerPage() {
+export function OfficerPage({ lockedRole }: { lockedRole?: Stage } = {}) {
   const { t, lang } = useLang()
   const [params, setParams] = useSearchParams()
   const selectedId = params.get('app')
   const [status, setStatus] = useState<string>('ready_for_officer')
   const [officeId, setOfficeId] = useState<string>(ALL)
   const [offset, setOffset] = useState(0)
-  const [role, setRoleState] = useState<Stage | null>(readRole)
+  const [role, setRoleState] = useState<Stage | null>(lockedRole ?? readRole)
   const [offices, setOffices] = useState<Office[]>([])
   const [data, setData] = useState<ApplicationList>({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
@@ -151,22 +151,29 @@ export function OfficerPage() {
 
       <div className="flex flex-wrap items-center gap-3" role="group" aria-label={t('officer.role')}>
         <span className="text-sm font-medium text-muted-foreground">{t('officer.role')}</span>
-        <div className="inline-flex rounded-lg border bg-card p-0.5">
-          {([null, ...STAGE_ORDER] as (Stage | null)[]).map((r) => (
-            <button
-              key={r ?? 'all'}
-              type="button"
-              aria-pressed={role === r}
-              onClick={() => setRole(r)}
-              className={cn(
-                'rounded-md px-3 py-1.5 text-sm transition-colors',
-                role === r ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {r ? stageName(r, lang) : t('officer.allStages')}
-            </button>
-          ))}
-        </div>
+        {lockedRole ? (
+          // Signed in as a specific department role: locked, no switching (VAO must never act as RI/Tahsildar).
+          <span className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
+            {stageName(lockedRole, lang)}
+          </span>
+        ) : (
+          <div className="inline-flex rounded-lg border bg-card p-0.5">
+            {([null, ...STAGE_ORDER] as (Stage | null)[]).map((r) => (
+              <button
+                key={r ?? 'all'}
+                type="button"
+                aria-pressed={role === r}
+                onClick={() => setRole(r)}
+                className={cn(
+                  'rounded-md px-3 py-1.5 text-sm transition-colors',
+                  role === r ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {r ? stageName(r, lang) : t('officer.allStages')}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <Card className="py-0">

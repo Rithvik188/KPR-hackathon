@@ -21,4 +21,5 @@ export const contractChecks: [
   Fits<S['AlertOut'], T.Alert>,
   Fits<S['IssueReportOut'], T.IssueReport>,
   Fits<S['OperationsMetricsOut'], T.OperationsMetrics>,
-] = [true, true, true, true, true, true, true, true, true, true, true]
+  Fits<S['CitizenOut'], T.Citizen>,
+] = [true, true, true, true, true, true, true, true, true, true, true, true]

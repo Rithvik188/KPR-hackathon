@@ -1,3 +1,4 @@
+import { Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -47,6 +48,13 @@ export function TrackDetailPage() {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">{t('v2.track.detail.title', { id: detail.id })}</h1>
               <p className="text-muted-foreground">{dateTime(detail.created_at)}</p>
+              {detail.can_id && (
+                <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Lock className="size-3.5" aria-hidden />
+                  <span className="font-mono font-medium text-foreground">{detail.can_id}</span>
+                  {t('v2.track.detail.canLocked', { name: detail.citizen_name })}
+                </p>
+              )}
             </div>
             <AppStatusBadge status={detail.status} />
           </div>

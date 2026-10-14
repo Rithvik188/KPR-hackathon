@@ -2,6 +2,7 @@
 import alerts from '@contract/fixtures/alerts.json'
 import applicationDetail from '@contract/fixtures/application_detail.json'
 import applicationsList from '@contract/fixtures/applications_list.json'
+import citizen from '@contract/fixtures/citizen.json'
 import issues from '@contract/fixtures/issues.json'
 import metricsDetection from '@contract/fixtures/metrics_detection.json'
 import metricsOperations from '@contract/fixtures/metrics_operations.json'
@@ -15,6 +16,7 @@ export const fixtures = {
   alerts,
   applicationDetail,
   applicationsList,
+  citizen,
   issues,
   metricsDetection,
   metricsOperations,

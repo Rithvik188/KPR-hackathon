@@ -120,6 +120,7 @@ export function ApplicationDrawer({
                 <span>{detail.office_name}</span>
                 <span>{t(`service.${detail.service}`)}</span>
                 <span>{detail.phone_masked}</span>
+                {detail.can_id && <span className="font-mono text-xs">CAN {detail.can_id}</span>}
               </SheetDescription>
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <SlaChip hoursLeft={detail.sla_hours_left} status={detail.status} />

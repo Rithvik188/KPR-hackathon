@@ -8,11 +8,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useLang } from '@/i18n'
 import { Breadcrumbs } from '@/v2/components/Breadcrumbs'
 import { SCHEMES } from '@/v2/data/schemes'
+import { usePortalBase } from '@/v2/portalBase'
 
 /** Schemes directory: ~14 realistic TN schemes with required documents. Only the 4 SevaiCheck supports are
- * clickable into Apply; the rest are informational ("coming soon"). No document upload happens on this page. */
+ * clickable into Apply; the rest are informational ("coming soon"). No document upload happens on this page.
+ * In the operator portal, Apply starts a counter application on a citizen's behalf (/operator/apply/...). */
 export function ServicesPage() {
   const { t, lang } = useLang()
+  const base = usePortalBase()
+  const canApply = base === '/portal' || base === '/operator'
 
   return (
     <div className="space-y-5">
@@ -20,6 +24,7 @@ export function ServicesPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('v2.services.title')}</h1>
         <p className="text-muted-foreground">{t('v2.services.subtitle')}</p>
+        {base === '/operator' && <p className="mt-1 text-sm text-muted-foreground">{t('v2.services.operatorNote')}</p>}
       </div>
 
       {/* Table view (desktop) */}
@@ -61,9 +66,9 @@ export function ServicesPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {scheme.service && (
+                    {canApply && scheme.service && (
                       <Button asChild size="sm">
-                        <Link to={`/portal/apply/${scheme.service}`}>
+                        <Link to={`${base}/apply/${scheme.service}`}>
                           {t('v2.services.apply')}
                           <ArrowRight aria-hidden />
                         </Link>
@@ -99,9 +104,9 @@ export function ServicesPage() {
                 <Clock className="size-3.5" aria-hidden />
                 {t('v2.services.days', { n: scheme.slaDays })}
               </p>
-              {scheme.service && (
+              {canApply && scheme.service && (
                 <Button asChild size="sm" className="w-full">
-                  <Link to={`/portal/apply/${scheme.service}`}>
+                  <Link to={`${base}/apply/${scheme.service}`}>
                     {t('v2.services.apply')}
                     <ArrowRight aria-hidden />
                   </Link>
