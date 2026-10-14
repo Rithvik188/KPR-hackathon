@@ -322,10 +322,15 @@ def to_out(a: Alert, names: dict[str, str]) -> AlertOut:
 
 
 @router.get("/alerts", response_model=list[AlertOut])
-def list_alerts(status: str | None = None, session: Session = Depends(get_session)) -> list[AlertOut]:
+def list_alerts(status: str | None = None, office_id: str | None = None,
+                session: Session = Depends(get_session)) -> list[AlertOut]:
     q = select(Alert)
     if status:
         q = q.where(Alert.status == status)
+    if office_id:
+        # Notices tab (centre operators): alerts scoped to one office. District-wide alerts (office_id is
+        # null, e.g. none currently) never match an office filter, which is the right default.
+        q = q.where(Alert.office_id == office_id)
     names = office_names(session)
     return [to_out(a, names) for a in session.exec(q.order_by(Alert.created_at.desc(), Alert.id)).all()]
 

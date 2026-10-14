@@ -11,7 +11,7 @@ Service = Literal["community_certificate", "income_certificate", "nativity_certi
 AppStatus = Literal["submitted", "needs_fix", "ready_for_officer", "approved", "rejected"]
 OfficerAction = Literal["approve", "reject", "request_fix", "forward"]
 Stage = Literal["vao", "ri", "tahsildar"]
-OfficeType = Literal["taluk_office", "esevai_centre"]
+OfficeType = Literal["taluk_office", "esevai_centre", "esevai_centre_private"]
 IssueCategory = Literal["scanner_problem", "long_wait", "wrong_rejection", "other"]
 ReporterRole = Literal["citizen", "operator", "officer"]
 

@@ -1,8 +1,10 @@
-// Mock authentication only. No real credentials, Aadhaar numbers or payment details are ever
-// captured or stored — this is a demo login that accepts any input and a one-click demo account.
+// Mock authentication only. No real credentials, Aadhaar numbers, OTPs or payment details are ever sent
+// anywhere or stored beyond this browser's localStorage — everything here is a demo login.
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 import type { Stage } from '@/api/types'
+
+export type CentreType = 'govt' | 'private'
 
 export type CitizenProfile = {
   kind: 'citizen'
@@ -14,10 +16,21 @@ export type CitizenProfile = {
 export type DepartmentProfile = {
   kind: 'department'
   name: string
+  // TODO(handoff): required once DepartmentLoginPage is rewritten to collect a staff ID (see P2-TODO.md).
+  employeeId?: string
   role: Stage
 }
 
-export type Profile = CitizenProfile | DepartmentProfile
+export type OperatorProfile = {
+  kind: 'operator'
+  name: string
+  employeeId?: string
+  centreType: CentreType
+  officeId: string
+  officeName: string
+}
+
+export type Profile = CitizenProfile | DepartmentProfile | OperatorProfile
 
 const KEY = 'sevaicheck.v2.profile'
 
@@ -43,6 +56,7 @@ interface AuthContextValue {
   profile: Profile | null
   loginCitizen: (profile: Omit<CitizenProfile, 'kind'>) => void
   loginDepartment: (profile: Omit<DepartmentProfile, 'kind'>) => void
+  loginOperator: (profile: Omit<OperatorProfile, 'kind'>) => void
   logout: () => void
 }
 
@@ -58,7 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     profile,
     loginCitizen: (p) => setProfile({ kind: 'citizen', ...p }),
+    // Hierarchy is structural, not a preference: the role/centre type is fixed at sign-in from the staff ID
+    // or the selected office, and nothing in the department/operator UI can change it afterwards.
     loginDepartment: (p) => setProfile({ kind: 'department', ...p }),
+    loginOperator: (p) => setProfile({ kind: 'operator', ...p }),
     logout: () => setProfile(null),
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

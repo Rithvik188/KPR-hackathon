@@ -155,9 +155,9 @@ export function actOnApplication(id: string, input: OfficerActionInput): Promise
   return request('PATCH', `/applications/${encodeURIComponent(id)}`, input)
 }
 
-export function listAlerts(status?: 'open' | 'acknowledged'): Promise<Alert[]> {
+export function listAlerts(status?: 'open' | 'acknowledged', officeId?: string): Promise<Alert[]> {
   if (USE_FIXTURES) return fixture((f) => f.alerts)
-  return request('GET', '/alerts', undefined, { status })
+  return request('GET', '/alerts', undefined, { status, office_id: officeId })
 }
 
 export function ackAlert(id: string): Promise<Alert> {
