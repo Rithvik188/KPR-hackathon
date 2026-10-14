@@ -1,9 +1,0 @@
-{"days": 30, "source": "FIXTURE",
- "totals": {"applications": 2000, "documents": 6400, "first_time_right_rate": 0.62, "avg_resubmissions": 0.7, "backlog_now": 214, "sla_breaches_now": 31},
- "daily": [{"date": "2026-10-12", "submitted": 70, "approved": 52, "rejected": 11, "backlog": 205},
-           {"date": "2026-10-13", "submitted": 74, "approved": 55, "rejected": 12, "backlog": 212}],
- "by_office": [{"office_id": "off_sulur_es2", "office_name": "e-Sevai Centre – Sulur 2", "taluk": "Sulur", "lat": 11.0247, "lng": 77.1256,
-                "submissions": 210, "reject_rate": 0.31, "backlog": 22, "top_issue": "BLUR"}],
- "by_issue": [{"code": "BLUR", "count": 410}, {"code": "GLARE", "count": 260}, {"code": "AADHAAR_BACK_MISSING", "count": 190}],
- "projection": {"baseline_reject_rate": 0.38, "projected_reject_rate": 0.12, "prevented_rejections": 520,
-                "assumptions_en": "FIXTURE: prevented = sum over counter-detectable codes of rejections × detector recall."}}
