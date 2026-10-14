@@ -274,6 +274,8 @@ export interface components {
             id: string;
             /** Citizen Name */
             citizen_name: string;
+            /** Citizen Dob */
+            citizen_dob?: string | null;
             /** Phone Masked */
             phone_masked: string;
             /**
@@ -290,6 +292,12 @@ export interface components {
              * @enum {string}
              */
             status: "submitted" | "needs_fix" | "ready_for_officer" | "approved" | "rejected";
+            /** Stage */
+            stage?: ("vao" | "ri" | "tahsildar") | null;
+            /** Stage Due At */
+            stage_due_at?: string | null;
+            /** Stage Sla Hours Left */
+            stage_sla_hours_left?: number | null;
             /** Created At */
             created_at: string;
             /** Updated At */
@@ -324,6 +332,8 @@ export interface components {
             id: string;
             /** Citizen Name */
             citizen_name: string;
+            /** Citizen Dob */
+            citizen_dob?: string | null;
             /** Phone Masked */
             phone_masked: string;
             /**
@@ -340,6 +350,12 @@ export interface components {
              * @enum {string}
              */
             status: "submitted" | "needs_fix" | "ready_for_officer" | "approved" | "rejected";
+            /** Stage */
+            stage?: ("vao" | "ri" | "tahsildar") | null;
+            /** Stage Due At */
+            stage_due_at?: string | null;
+            /** Stage Sla Hours Left */
+            stage_sla_hours_left?: number | null;
             /** Created At */
             created_at: string;
             /** Updated At */
@@ -384,6 +400,10 @@ export interface components {
             dob_match?: boolean | null;
             /** Issues */
             issues?: components["schemas"]["Issue"][];
+            /** Form Check */
+            form_check?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** CreateApplicationIn */
         CreateApplicationIn: {
@@ -398,6 +418,8 @@ export interface components {
             service: "community_certificate" | "income_certificate" | "nativity_certificate" | "ration_card_update";
             /** Office Id */
             office_id: string;
+            /** Citizen Dob */
+            citizen_dob?: string | null;
         };
         /** DecisionOut */
         DecisionOut: {
@@ -405,7 +427,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "approve" | "reject" | "request_fix";
+            action: "approve" | "reject" | "request_fix" | "forward";
             /** Reason Code */
             reason_code: string | null;
             /** Note */
@@ -421,7 +443,7 @@ export interface components {
              * Doc Type
              * @enum {string}
              */
-            doc_type: "aadhaar_front" | "aadhaar_back" | "pan" | "voter_id" | "unknown";
+            doc_type: "aadhaar_front" | "aadhaar_back" | "pan" | "voter_id" | "unknown" | "parent_community_certificate" | "birth_certificate" | "income_proof" | "address_proof";
             /** Declared Type */
             declared_type: string | null;
             /**
@@ -568,11 +590,13 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "approve" | "reject" | "request_fix";
+            action: "approve" | "reject" | "request_fix" | "forward";
             /** Reason Code */
             reason_code?: string | null;
             /** Note */
             note?: string | null;
+            /** Role */
+            role?: ("vao" | "ri" | "tahsildar") | null;
         };
         /** OperationsMetricsOut */
         OperationsMetricsOut: {
@@ -711,7 +735,7 @@ export interface components {
              * Doc Type
              * @enum {string}
              */
-            doc_type: "aadhaar_front" | "aadhaar_back" | "pan" | "voter_id" | "unknown";
+            doc_type: "aadhaar_front" | "aadhaar_back" | "pan" | "voter_id" | "unknown" | "parent_community_certificate" | "birth_certificate" | "income_proof" | "address_proof";
             /** Declared Type */
             declared_type?: string | null;
             /**
@@ -840,6 +864,7 @@ export interface operations {
             query?: {
                 status?: ("submitted" | "needs_fix" | "ready_for_officer" | "approved" | "rejected") | null;
                 office_id?: string | null;
+                stage?: ("vao" | "ri" | "tahsildar") | null;
                 limit?: number;
                 offset?: number;
             };

@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { uploadDocument } from '@/api/client'
-import type { DeclarableType, DocStatus, UploadResult, ValidationResult } from '@/api/types'
+import type { DeclarableType, DocStatus, SupportingType, UploadResult, ValidationResult } from '@/api/types'
 import { CheckingCard } from '@/components/CheckingCard'
 import { LatencyChip, ResultBody } from '@/components/ResultCard'
 import { DocStatusBadge } from '@/components/StatusBadge'
@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useLang } from '@/i18n'
 import { cn } from '@/lib/utils'
 
-export type SlotName = 'aadhaar_front' | 'aadhaar_back' | 'id_proof'
+export type SlotName = 'aadhaar_front' | 'aadhaar_back' | 'id_proof' | 'supporting'
 
 interface Attempt {
   status: DocStatus
@@ -47,10 +47,13 @@ export function DocSlot({
   slot,
   applicationId,
   onUploaded,
+  supportingType,
 }: {
   slot: SlotName
   applicationId: string | null
   onUploaded: (result: UploadResult) => void
+  /** Required when slot === 'supporting': the document this service needs (from contract/services.json). */
+  supportingType?: SupportingType | null
 }) {
   const { t } = useLang()
   const [idType, setIdType] = useState<'pan' | 'voter_id'>('pan')
@@ -58,11 +61,16 @@ export function DocSlot({
   const [latest, setLatest] = useState<ValidationResult | null>(null)
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
-  const declaredType: DeclarableType = slot === 'id_proof' ? idType : slot
-  const title = slot === 'id_proof' ? `${t('counter.idProof')} · ${t(`doc.${idType}`)}` : t(`doc.${slot}`)
+  const declaredType = (slot === 'id_proof' ? idType : slot === 'supporting' ? supportingType : slot) as DeclarableType
+  const title =
+    slot === 'id_proof'
+      ? `${t('counter.idProof')} · ${t(`doc.${idType}`)}`
+      : slot === 'supporting'
+        ? t(`doc.${supportingType ?? 'unknown'}`)
+        : t(`doc.${slot}`)
 
   async function upload(file: File) {
-    if (!applicationId) return
+    if (!applicationId || !declaredType) return
     setBusy(true)
     try {
       const res = await uploadDocument(applicationId, file, declaredType)
@@ -110,13 +118,14 @@ export function DocSlot({
             ))}
           </div>
         )}
+        {slot === 'supporting' && <p className="text-xs text-muted-foreground">{t('counter.verifiedByOfficer')}</p>}
         <AttemptHistory attempts={attempts} />
         {busy ? (
           <CheckingCard />
         ) : latest ? (
           <ResultBody result={latest} onRetake={() => inputRef.current?.click()} />
         ) : (
-          <UploadBox onFile={upload} disabled={!applicationId} inputRef={inputRef} compact />
+          <UploadBox onFile={upload} disabled={!applicationId || !declaredType} inputRef={inputRef} compact />
         )}
         {/* Keep a hidden input mounted after a result so Retake can reopen the camera / picker. */}
         {latest && !busy && (

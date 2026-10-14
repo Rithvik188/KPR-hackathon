@@ -14,7 +14,8 @@ from app.core.storage import delete_image
 from app.ops.notifications import notify_decision
 from app.ops.offices import office_names
 from app.ops.schemas import (ApplicationDetailOut, ApplicationListOut, ApplicationSummaryOut, AppStatus,
-                             CreateApplicationIn, OfficerActionIn)
+                             CreateApplicationIn, OfficerActionIn, Stage)
+from app.ops.services import next_stage
 from app.ops.service import DECIDED, SLA, add_event, detail, documents_by_app, documents_of, get_app, summary
 
 router = APIRouter(tags=["ops"])
@@ -32,8 +33,8 @@ def create_application(body: CreateApplicationIn, session: Session = Depends(get
         raise api_error(422, "INVALID_PHONE", "Enter a 10-digit mobile number starting with 6, 7, 8 or 9")
     now = utc_now()
     app = Application(id=new_id("app"), citizen_name=" ".join(body.citizen_name.split()).upper(),
-                      phone_masked=mask_phone(digits), service=body.service, office_id=office.id,
-                      status="submitted", created_at=now, updated_at=now, sla_due_at=now + SLA)
+                      citizen_dob=(body.citizen_dob or None), phone_masked=mask_phone(digits), service=body.service,
+                      office_id=office.id, status="submitted", created_at=now, updated_at=now, sla_due_at=now + SLA)
     session.add(app)
     add_event(session, app.id, "application_created", "operator")
     session.commit()
@@ -42,7 +43,7 @@ def create_application(body: CreateApplicationIn, session: Session = Depends(get
 
 
 @router.get("/applications", response_model=ApplicationListOut)
-def list_applications(status: AppStatus | None = None, office_id: str | None = None,
+def list_applications(status: AppStatus | None = None, office_id: str | None = None, stage: Stage | None = None,
                       limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0),
                       session: Session = Depends(get_session)) -> ApplicationListOut:
     q = select(Application)
@@ -53,6 +54,9 @@ def list_applications(status: AppStatus | None = None, office_id: str | None = N
     if office_id:
         q = q.where(Application.office_id == office_id)
         count_q = count_q.where(Application.office_id == office_id)
+    if stage:
+        q = q.where(Application.stage == stage)
+        count_q = count_q.where(Application.stage == stage)
     # Contract: ready_for_officer first, then by sla_hours_left ascending (= earliest SLA due date first).
     ready_first = case((Application.status == "ready_for_officer", 0), else_=1)
     apps = session.exec(q.order_by(ready_first, Application.sla_due_at, Application.id)
@@ -77,25 +81,50 @@ def officer_action(app_id: str, body: OfficerActionIn, session: Session = Depend
     if body.action in ("reject", "request_fix") and not body.reason_code:
         raise api_error(422, "REASON_REQUIRED", f"{body.action} needs a reason_code")
 
+    # Contract v1.4: with a role, it must be the application's current stage, and only the Tahsildar decides.
+    # Without a role the old single-officer behaviour is kept.
+    if body.role is not None:
+        if app.status != "ready_for_officer" or app.stage != body.role:
+            raise api_error(409, "STAGE_MISMATCH",
+                            f"Application is at stage {app.stage or 'none'}, not {body.role}")
+        if body.action in ("approve", "reject") and body.role != "tahsildar":
+            raise api_error(409, "STAGE_MISMATCH", f"Only the Tahsildar can {body.action}; forward it first")
+    if body.action == "forward" and (app.status != "ready_for_officer" or next_stage(app.stage) is None):
+        raise api_error(409, "CANNOT_FORWARD", "Only an application waiting with the VAO or RI can be forwarded")
+
     now = utc_now()
     docs = documents_of(session, app.id)
+    if body.action == "forward":
+        previous, app.stage = app.stage, next_stage(app.stage)
+        app.stage_entered_at = now
+        add_event(session, app.id, "forwarded", body.role or "officer",
+                  f"{previous} → {app.stage}" + (f"; note: {body.note}" if body.note else ""))
+        app.updated_at = now
+        session.add(app)
+        session.commit()
+        session.refresh(app)
+        return summary(app, office_names(session).get(app.office_id, app.office_id), docs)
     if body.action in ("approve", "reject"):
         app.status = "approved" if body.action == "approve" else "rejected"
         app.decision_action = body.action
         app.decision_reason = body.reason_code
         app.decision_note = body.note
         app.decided_at = now
+        app.stage = None
+        app.stage_entered_at = None
         # Privacy rule: card images are deleted as soon as the application is decided.
         for doc in docs:
             delete_image(doc.id)
             doc.image_path = None
             session.add(doc)
         reason = f" ({body.reason_code})" if body.reason_code else ""
-        add_event(session, app.id, app.status, "officer",
+        add_event(session, app.id, app.status, body.role or "officer",
                   f"{app.status}{reason}; {len(docs)} card images deleted" + (f"; note: {body.note}" if body.note else ""))
     else:
         app.status = "needs_fix"
-        add_event(session, app.id, "fix_requested", "officer",
+        app.stage = None
+        app.stage_entered_at = None
+        add_event(session, app.id, "fix_requested", body.role or "officer",
                   body.reason_code + (f"; note: {body.note}" if body.note else ""))
     app.updated_at = now
     notify_decision(session, app, body.action, body.reason_code)

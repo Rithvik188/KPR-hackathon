@@ -14,6 +14,7 @@ from app.ops.notifications import notify_needs_fix, notify_ready
 from app.ops.offices import office_names
 from app.ops.schemas import UploadResultOut
 from app.ops.service import DECIDED, add_event, blocking_issues, documents_of, get_app, recompute, summary
+from app.ops.services import SUPPORTING_SLOT, supporting_type_for
 from app.ops.status import latest_by_slot, slot_of
 from app.validation.api import MAX_BYTES, find_duplicates, validate_image
 from app.validation.messages import make_issue
@@ -35,6 +36,9 @@ def upload_document(app_id: str, file: UploadFile = File(...), declared_type: st
     if declared_type not in DECLARABLE_TYPES:
         raise api_error(400, "BAD_DECLARED_TYPE", f"declared_type must be one of {', '.join(DECLARABLE_TYPES)}")
     app = get_app(session, app_id)
+    if slot_of(declared_type) == SUPPORTING_SLOT and declared_type != supporting_type_for(app.service):
+        raise api_error(400, "WRONG_SUPPORTING_DOCUMENT",
+                        f"{app.service} needs a {supporting_type_for(app.service)}, not a {declared_type}")
     if app.status in DECIDED:
         raise api_error(409, "ALREADY_DECIDED", f"Application {app_id} is already {app.status}")
 

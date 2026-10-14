@@ -3,12 +3,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { documentImageUrl, getApplication } from '@/api/client'
-import type { ApplicationDetail, ApplicationDocument, DocType } from '@/api/types'
+import type { ApplicationDetail, ApplicationDocument, DocType, Stage } from '@/api/types'
 import { ConsistencyCard } from '@/components/ConsistencyCard'
 import { FlagChips } from '@/components/FlagChips'
 import { OfficerIssueList } from '@/components/IssueList'
 import { FieldGrid } from '@/components/ResultCard'
-import { SlaChip } from '@/components/SlaChip'
+import { SlaChip, StageSlaChip } from '@/components/SlaChip'
+import { StageTrack } from '@/components/StageTrack'
 import { AppStatusBadge, DocStatusBadge } from '@/components/StatusBadge'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -72,10 +73,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 /** Wide right-hand drawer: card images, read fields, explainable issues, consistency, history and actions. */
 export function ApplicationDrawer({
   applicationId,
+  role,
   onClose,
   onChanged,
 }: {
   applicationId: string | null
+  role: Stage | null
   onClose: () => void
   onChanged: () => void
 }) {
@@ -120,6 +123,7 @@ export function ApplicationDrawer({
               </SheetDescription>
               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <SlaChip hoursLeft={detail.sla_hours_left} status={detail.status} />
+                {detail.stage && <StageSlaChip hoursLeft={detail.stage_sla_hours_left} />}
                 <span>
                   {t('officer.created')} {dateTime(detail.created_at)}
                 </span>
@@ -128,6 +132,7 @@ export function ApplicationDrawer({
                 </span>
               </div>
               {detail.flag_codes.length > 0 && <FlagChips codes={detail.flag_codes} />}
+              {(detail.stage || detail.status === 'approved') && <StageTrack stage={detail.stage} status={detail.status} />}
             </>
           ) : (
             <>
@@ -199,6 +204,9 @@ export function ApplicationDrawer({
             <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">{t('officer.actions')}</p>
             <OfficerActions
               applicationId={detail.id}
+              stage={detail.stage ?? null}
+              status={detail.status}
+              role={role}
               onDone={() => {
                 load()
                 onChanged()

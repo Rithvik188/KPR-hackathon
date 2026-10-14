@@ -8,13 +8,17 @@ import { ApplicationPanel } from '@/pages/counter/ApplicationPanel'
 import { DocSlot, type SlotName } from '@/pages/counter/DocSlot'
 import { OperatorBar } from '@/pages/counter/OperatorBar'
 import { PhoneMock } from '@/pages/counter/PhoneMock'
+import { supportingTypeFor } from '@/lib/services'
 
-const SLOTS: SlotName[] = ['aadhaar_front', 'aadhaar_back', 'id_proof']
+const ID_SLOTS: SlotName[] = ['aadhaar_front', 'aadhaar_back', 'id_proof']
 
 export function CounterPage() {
   const { t } = useLang()
   const [application, setApplication] = useState<ApplicationSummary | null>(null)
   const [consistency, setConsistency] = useState<ConsistencyResult | null>(null)
+
+  const supportingType = application ? supportingTypeFor(application.service) : null
+  const slots: SlotName[] = supportingType ? [...ID_SLOTS, 'supporting'] : ID_SLOTS
 
   function onUploaded(res: UploadResult) {
     setApplication(res.application)
@@ -39,8 +43,14 @@ export function CounterPage() {
         <section className="space-y-4" aria-label={t('counter.documents')}>
           {!application && <p className="text-sm text-muted-foreground">{t('counter.createFirst')}</p>}
           {/* key: a new application remounts the slots, clearing their attempt history */}
-          {SLOTS.map((slot) => (
-            <DocSlot key={`${application?.id ?? 'none'}-${slot}`} slot={slot} applicationId={application?.id ?? null} onUploaded={onUploaded} />
+          {slots.map((slot) => (
+            <DocSlot
+              key={`${application?.id ?? 'none'}-${slot}`}
+              slot={slot}
+              applicationId={application?.id ?? null}
+              onUploaded={onUploaded}
+              supportingType={supportingType}
+            />
           ))}
         </section>
 

@@ -6,11 +6,12 @@ import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { getOffices, listApplications } from '@/api/client'
-import type { ApplicationList, AppStatus, Office } from '@/api/types'
+import type { ApplicationList, AppStatus, Office, Stage } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useLang } from '@/i18n'
+import { STAGE_ORDER, stageName } from '@/lib/services'
 import { cn } from '@/lib/utils'
 import { ApplicationDrawer } from '@/pages/officer/ApplicationDrawer'
 import { QueueTable } from '@/pages/officer/QueueTable'
@@ -19,14 +20,25 @@ const PAGE = 50
 const POLL_MS = 10_000
 const STATUSES: AppStatus[] = ['ready_for_officer', 'needs_fix', 'submitted', 'approved', 'rejected']
 const ALL = 'all'
+const ROLE_KEY = 'sevaicheck.officerRole'
+
+function readRole(): Stage | null {
+  try {
+    const v = localStorage.getItem(ROLE_KEY)
+    return (STAGE_ORDER as string[]).includes(v ?? '') ? (v as Stage) : null
+  } catch {
+    return null
+  }
+}
 
 export function OfficerPage() {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [params, setParams] = useSearchParams()
   const selectedId = params.get('app')
   const [status, setStatus] = useState<string>('ready_for_officer')
   const [officeId, setOfficeId] = useState<string>(ALL)
   const [offset, setOffset] = useState(0)
+  const [role, setRoleState] = useState<Stage | null>(readRole)
   const [offices, setOffices] = useState<Office[]>([])
   const [data, setData] = useState<ApplicationList>({ items: [], total: 0 })
   const [loading, setLoading] = useState(true)
@@ -43,6 +55,7 @@ export function OfficerPage() {
           await listApplications({
             status: status === ALL ? undefined : (status as AppStatus),
             office_id: officeId === ALL ? undefined : officeId,
+            stage: role ?? undefined,
             limit: PAGE,
             offset,
           }),
@@ -53,7 +66,7 @@ export function OfficerPage() {
         setLoading(false)
       }
     },
-    [status, officeId, offset, t],
+    [status, officeId, offset, role, t],
   )
 
   useEffect(() => {
@@ -61,6 +74,18 @@ export function OfficerPage() {
     const timer = setInterval(() => load(true), POLL_MS)
     return () => clearInterval(timer)
   }, [load])
+
+  function setRole(next: Stage | null) {
+    setRoleState(next)
+    setOffset(0)
+    if (next) setStatus('ready_for_officer') // an officer at a stage works the ready queue
+    try {
+      if (next) localStorage.setItem(ROLE_KEY, next)
+      else localStorage.removeItem(ROLE_KEY)
+    } catch {
+      // storage unavailable: the role lasts for this page only
+    }
+  }
 
   function select(id: string | null) {
     const next = new URLSearchParams(params)
@@ -124,6 +149,26 @@ export function OfficerPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3" role="group" aria-label={t('officer.role')}>
+        <span className="text-sm font-medium text-muted-foreground">{t('officer.role')}</span>
+        <div className="inline-flex rounded-lg border bg-card p-0.5">
+          {([null, ...STAGE_ORDER] as (Stage | null)[]).map((r) => (
+            <button
+              key={r ?? 'all'}
+              type="button"
+              aria-pressed={role === r}
+              onClick={() => setRole(r)}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-sm transition-colors',
+                role === r ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {r ? stageName(r, lang) : t('officer.allStages')}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Card className="py-0">
         <QueueTable items={data.items} loading={loading} selectedId={selectedId} onSelect={select} />
       </Card>
@@ -140,7 +185,7 @@ export function OfficerPage() {
         </div>
       </div>
 
-      <ApplicationDrawer applicationId={selectedId} onClose={() => select(null)} onChanged={() => load(true)} />
+      <ApplicationDrawer applicationId={selectedId} role={role} onClose={() => select(null)} onChanged={() => load(true)} />
     </div>
   )
 }
