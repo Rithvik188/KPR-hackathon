@@ -20,8 +20,8 @@ from app.validation.messages import make_issue
 from app.validation.quality import assess
 from app.validation.rules import apply_rules
 from app.validation.thresholds import get_thresholds
-from app.validation.types import (DECLARABLE_TYPES, ExtractedDoc, OcrInfo, Quality, Timings, ValidationOutcome,
-                                  ValidationResult, doc_status)
+from app.validation.types import (DECLARABLE_TYPES, SUPPORTING_TYPES, ExtractedDoc, OcrInfo, Quality, Timings,
+                                  ValidationOutcome, ValidationResult, doc_status)
 
 log = logging.getLogger("sevaicheck.validate")
 
@@ -73,6 +73,28 @@ def _second_reader(card: np.ndarray, doc_type: str):
     return run
 
 
+def _validate_supporting(image_bytes: bytes, declared_type: str, t0: float) -> ValidationOutcome:
+    """Contract v1.4: page quality first (no OCR on a bad photo), then a keyword sanity check."""
+    from app.validation.supporting import content_check, page_quality
+
+    q, issues, page = page_quality(image_bytes)
+    t_quality = _ms(t0)
+    if page is None or any(i.severity == "blocking" for i in issues):
+        result = ValidationResult(doc_type=declared_type, declared_type=declared_type, status=doc_status(issues),
+                                  issues=issues, quality=Quality(**q),
+                                  timings_ms=Timings(quality=t_quality, ocr=0, total=_ms(t0)))
+        return ValidationOutcome(result=result, card_jpeg=_jpeg(page) if page is not None else None)
+    t1 = time.perf_counter()
+    more, fields, mean_conf = content_check(page, declared_type)
+    issues += more
+    detected = next((i.evidence["detected"] for i in more if i.code == "WRONG_DOC_TYPE"), declared_type)
+    result = ValidationResult(doc_type=detected, declared_type=declared_type, status=doc_status(issues),
+                              issues=issues, quality=Quality(**q), fields=fields,
+                              ocr=OcrInfo(mean_confidence=round(mean_conf, 3), id_number_confidence=None),
+                              timings_ms=Timings(quality=t_quality, ocr=_ms(t1), total=_ms(t0)))
+    return ValidationOutcome(result=result, card_jpeg=_jpeg(page), phash=None, extracted=None)
+
+
 def _ocr_and_classify(card: np.ndarray, declared_type: str | None, min_score: float):
     tokens = ocr.read(card)
     detected, scores = classify(tokens, declared_type, min_score)
@@ -94,6 +116,9 @@ def validate_image(image_bytes: bytes, declared_type: str | None = None) -> Vali
                                {"size_mb": round(len(image_bytes) / 1048576, 2), "max_mb": 10})
     if sniff_image(image_bytes) is None:
         return _file_rejection("UNSUPPORTED_FILE", declared_type, t0, {"detected": "not jpg/png"})
+
+    if declared_type in SUPPORTING_TYPES:
+        return _validate_supporting(image_bytes, declared_type, t0)
 
     t = get_thresholds()
     rep = assess(image_bytes)

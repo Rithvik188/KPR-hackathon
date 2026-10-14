@@ -57,7 +57,7 @@ def compare_names(a: str, b: str, dob_match: bool | None, t: dict | None = None)
     evidence: dict = {"name_score": round(score, 1), "squashed_similarity": round(sim, 1)}
     if not sa or not sb:
         return "mismatch", score, evidence
-    if sim >= t["name_match_min"]:
+    if max(sim, score) >= t["name_match_min"]:  # same letters, or same tokens reordered ("KARTHIK R" = "R. KARTHIK")
         return "match", max(score, sim), evidence
 
     candidate = False
@@ -81,7 +81,31 @@ def _slot(d: ExtractedDoc) -> str:
     return d.declared_type or d.doc_type
 
 
-def check_consistency(docs: list[ExtractedDoc]) -> ConsistencyResult:
+def _form_check(form: dict, named: list[ExtractedDoc], docs: list[ExtractedDoc], t: dict) -> tuple[dict, list]:
+    """Operator-typed name/DOB vs the documents. The typed name is what e-Sevai prints on the certificate."""
+    issues = []
+    name_on_form = (form.get("name") or "").strip() or None
+    dob_on_form = form.get("dob") or None
+    anchor = next((d for d in named if _slot(d) == "aadhaar_front"), named[0] if named else None)
+    doc_dob = next((d.dob for d in ([anchor] if anchor else []) + docs if d and d.dob), None)
+    dob_match = None if not (dob_on_form and doc_dob) else dob_on_form == doc_dob
+    tier = None
+    if name_on_form and anchor:
+        tier, score, ev = compare_names(name_on_form, anchor.name, dob_match, t)
+        ev = {**ev, "name_on_form": name_on_form, "name_on_documents": anchor.name}
+        if tier == "mismatch":
+            issues.append(make_issue("FORM_NAME_MISMATCH", ev))
+        elif tier == "likely_match":
+            issues.append(make_issue("FORM_NAME_VARIANT", ev))
+    if dob_match is False:
+        issues.append(make_issue("FORM_DOB_MISMATCH", {"dob_on_form": dob_on_form, "dob_on_documents": doc_dob}))
+    check = {"name_on_form": name_on_form, "name_on_documents": anchor.name if anchor else None, "name_tier": tier,
+             "dob_on_form": dob_on_form, "dob_match": dob_match}
+    return check, issues
+
+
+def check_consistency(docs: list[ExtractedDoc], form: dict | None = None) -> ConsistencyResult:
+    """Cross-document checks; with `form` (contract v1.4) also the operator-typed name/DOB vs the documents."""
     t = get_thresholds()
     issues = []
     slots = {_slot(d) for d in docs}
@@ -96,8 +120,14 @@ def check_consistency(docs: list[ExtractedDoc]) -> ConsistencyResult:
             issues.append(make_issue("DOB_MISMATCH", {"dobs": {_slot(d): dob for d, dob in dobs}}))
 
     named = [d for d in docs if d.name and letters(d.name)]
+    form_check = None
+    if form is not None:
+        form_check, form_issues = _form_check(form, named, docs, t)
+        issues += form_issues
+
     if len(named) < 2:
-        return ConsistencyResult(name_tier="not_enough_data", dob_match=dob_match, issues=issues)
+        return ConsistencyResult(name_tier="not_enough_data", dob_match=dob_match, issues=issues,
+                                 form_check=form_check)
 
     anchor = next((d for d in named if _slot(d) == "aadhaar_front"), named[0])
     worst = None
@@ -112,4 +142,4 @@ def check_consistency(docs: list[ExtractedDoc]) -> ConsistencyResult:
     elif tier == "mismatch":
         issues.append(make_issue("NAME_MISMATCH", ev))
     return ConsistencyResult(name_tier=tier, name_score=round(score, 1), names_compared=[anchor.name, other.name],
-                             dob_match=dob_match, issues=issues)
+                             dob_match=dob_match, issues=issues, form_check=form_check)
