@@ -49,16 +49,20 @@ def pct(xs: list[float], p: float) -> int:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--latency-n", type=int, default=40)
-    ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--workers", type=int, default=3)
     a = ap.parse_args()
     from app.core.security import aadhaar_hmac
     from app.validation.consistency import check_consistency
 
     labels = load_labels("test")
     t0 = time.time()
+    preds = []
     with ProcessPoolExecutor(max_workers=a.workers) as ex:
-        preds = list(ex.map(_run_one, [(str(DATA / "test" / lab["file"]), lab["declared_type"]) for lab in labels],
-                            chunksize=2))
+        jobs = [(str(DATA / "test" / lab["file"]), lab["declared_type"]) for lab in labels]
+        for i, p in enumerate(ex.map(_run_one, jobs, chunksize=1), 1):
+            preds.append(p)
+            if i % 50 == 0 or i == len(jobs):
+                print(f"  test: {i}/{len(jobs)}", flush=True)
     print(f"validated {len(labels)} test images in {time.time() - t0:.0f}s")
 
     # ---- per-code detection ----
@@ -116,6 +120,7 @@ def main() -> None:
                "full_p50": pct(f_lat, 50), "full_p95": pct(f_lat, 95)}
 
     # ---- consistency on held-out test sets ----
+    print("  extracting test sets...", flush=True)
     sets = extracted_sets("test", refresh=True, workers=a.workers)
     confusion = [[0, 0, 0] for _ in TIERS]
     ned, back_ok, back_n, cons_fail = 0, 0, 0, []
