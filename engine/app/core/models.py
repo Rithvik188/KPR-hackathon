@@ -1,4 +1,4 @@
-"""Database tables (contract §5). Datetimes are stored as naive UTC; use `iso()` for API output."""
+"""Database tables (contract §5). Datetimes are timezone-aware UTC (sqlmodel requires tz); use `iso()` for API output."""
 import secrets
 from datetime import UTC, datetime
 
@@ -6,15 +6,14 @@ from sqlmodel import Field, SQLModel
 
 
 def utcnow() -> datetime:
-    return datetime.now(UTC).replace(tzinfo=None)
+    return datetime.now(UTC)
 
 
 def iso(dt: datetime | None) -> str | None:
     """ISO 8601 UTC with a trailing Z, as the contract requires."""
     if dt is None:
         return None
-    if dt.tzinfo is not None:
-        dt = dt.astimezone(UTC).replace(tzinfo=None)
+    dt = dt.astimezone(UTC).replace(tzinfo=None) if dt.tzinfo else dt  # naive values are treated as UTC
     return dt.replace(microsecond=0).isoformat() + "Z"
 
 
