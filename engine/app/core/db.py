@@ -1,7 +1,7 @@
 """SQLite engine, table creation and the FastAPI session dependency."""
 from collections.abc import Iterator
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect, text
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core import models  # noqa: F401  (registers tables on SQLModel.metadata)
@@ -20,10 +20,26 @@ def _sqlite_pragmas(dbapi_conn, _record) -> None:
     cur.close()
 
 
+def _add_missing_columns() -> None:
+    """Tiny forward-only migration: add columns that the models gained after the DB file was created
+    (contract bumps add optional fields; SQLite's create_all never alters existing tables)."""
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table in SQLModel.metadata.sorted_tables:
+            if not insp.has_table(table.name):
+                continue
+            have = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name not in have:
+                    ddl = col.type.compile(dialect=engine.dialect)
+                    conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {ddl}'))
+
+
 def create_db() -> None:
     _settings.data_dir.mkdir(parents=True, exist_ok=True)
     _settings.images_dir.mkdir(parents=True, exist_ok=True)
     SQLModel.metadata.create_all(engine)
+    _add_missing_columns()
 
 
 def get_session() -> Iterator[Session]:

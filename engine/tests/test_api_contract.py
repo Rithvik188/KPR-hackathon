@@ -24,7 +24,7 @@ def test_health(client):
     r = client.get("/api/health")
     assert r.status_code == 200
     body = r.json()
-    assert body["status"] == "ok" and body["version"] == "1.1"
+    assert body["status"] == "ok" and body["version"] == "1.3"
 
 
 def test_validate_rejects_non_image_as_result(client):
