@@ -1,8 +1,13 @@
 # Handoff: login/hierarchy/Notices/CAN round
 
-**Status:** feature-complete on `p2`. Auth/hierarchy/Notices (session 2) and the CAN UI + operator counter
-Apply (session 2, after P1's CAN backend) are **done and verified in fixture mode**. Nothing here is on `main`
-yet. P1's #0012 lifted the freeze, so it merges normally once it passes the merge gate ("Still open" item 1).
+**Status:** **merged to `main`** ("sync: p2 - auth/hierarchy/Notices, CAN UI, operator counter Apply"). It
+includes auth/hierarchy/Notices and the CAN UI + operator counter Apply.
+
+- **Verified before the merge:** fixture-mode UI checks (82/82 Playwright), and P1's API half of the gate on
+  `cddcfda` (#0015: pytest 111, contract_check 10/10, smoke_test passed, SPA routes 200).
+- **The merge was done at the P2 human's request before the live browser + phone check.** That check is with
+  P1 (comms P2→P1 #0010), see "Still open". If it finds a demo-blocking bug: fix forward on `p2`, or
+  `git revert -m 1 <merge-sha>` on `main`.
 
 ## What the human asked for (verbatim intent)
 
@@ -137,13 +142,17 @@ P1 built the CAN ops endpoints by agreement (comms #0013/#0014). On our side:
 
 ## Still open
 
-1. **Merge gate before `main`** (needs the real backend; not run in these cloud sessions):
-   - `python scripts/dev.py`, then sign in as each of the 5 profiles;
+1. **Live check on `main`, requested from P1** (comms #0010). Needs the real backend:
+   - `python -m app.ops.seed --reset`, then `python scripts/dev.py`, and sign in as each of the 5 profiles;
    - walk VAO → forward → RI → forward → Tahsildar → approve;
    - check that Notices for Sulur 2 shows the seeded rejection spike;
-   - apply with the demo citizen: the CAN gets created, then found on the second application;
+   - apply with the demo citizen: the CAN gets created, then shown straight away on the second application;
    - apply as an operator for a new phone number;
-   - run `npm run gen:types` and rebuild, then `scripts/smoke_test.py`, `scripts/contract_check.py` and
-     `pytest tests/ops`;
-   - do a phone click-through.
-2. Then merge `p2` → `main` and send P1 a MERGED message (P1 re-verifies `main` after every merge).
+   - run `scripts/privacy_audit.py`;
+   - do a phone click-through over ngrok.
+2. **`npm run gen:types`** against the live backend, then commit `web/src/api/types.gen.ts` (additions only, per
+   #0015).
+3. **Before the demo** (`plans/INTEGRATION.md` §5):
+   - `demo/demo_script.md` (with the new sign-in steps), the README sections owed by P2 + `docs/screenshots/`,
+     and the slides;
+   - bug bash, clean-room test, fresh seed, ngrok, `v1.0-rc` tag, backup video, rehearsal, `v1.0` tag.
