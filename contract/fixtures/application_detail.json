@@ -116,5 +116,6 @@
  "citizen_dob": "1998-04-12",
  "stage": "vao",
  "stage_due_at": "2026-10-14T05:20:00Z",
- "stage_sla_hours_left": 20.5
+ "stage_sla_hours_left": 20.5,
+ "can_id": "CAN2026000123"
 }

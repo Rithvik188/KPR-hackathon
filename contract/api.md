@@ -1,8 +1,9 @@
 # SevaiCheck API Contract
 
-**Version: 1.4** (bump on every change; see the CLAUDE.md section on the contract change protocol)
+**Version: 1.5** (bump on every change; see the CLAUDE.md section on the contract change protocol)
 
 **Changelog**
+- 1.5 (additive): CAN citizen profiles (`Citizen` table, `Application.can_id`, `POST /api/citizens`, `GET /api/citizens/{can}`); `OfficeType` adds `esevai_centre_private`.
 - 1.4 (additive): service-specific supporting documents (`contract/services.json`, 4 new DocTypes); form-vs-document check (`citizen_dob` on applications, `form` argument to `check_consistency`, `ConsistencyResult.form_check`, issue codes `FORM_NAME_MISMATCH`, `FORM_NAME_VARIANT`, `FORM_DOB_MISMATCH`, `CONTENT_NOT_VERIFIED`); stage-aware officer chain VAO → RI → Tahsildar (`stage`, `stage_due_at`, `stage_sla_hours_left`, OfficerAction `forward`, PATCH `role`, `GET /applications?stage=`).
 - 1.3: `ApplicationDetail.documents[].declared_type` (string or null).
 - 1.2: `Application.consistency_json` (optional, latest ConsistencyResult cached by ops).
@@ -31,7 +32,7 @@
 | `AlertRule` | `REJECT_SPIKE`, `SLA_BREACH`, `BACKLOG_GROWTH`, `DUPLICATE_CLUSTER`, `USER_REPORTED` |
 | `AlertSeverity` | `high`, `medium`, `low` |
 | `AlertStatus` | `open`, `acknowledged` |
-| `OfficeType` | `taluk_office`, `esevai_centre` |
+| `OfficeType` | `taluk_office`, `esevai_centre` (government-run), `esevai_centre_private` (franchise, v1.5) |
 | `Service` | `community_certificate`, `income_certificate`, `nativity_certificate`, `ration_card_update` |
 | `IssueCategory` | `scanner_problem`, `long_wait`, `wrong_rejection`, `other` |
 | `ReporterRole` | `citizen`, `operator`, `officer` |
@@ -136,6 +137,17 @@ When OCR ran, these become:
 - `name_score`, `names_compared` and `dob_match` are `null` / `[]` / `null` when `name_tier` is `not_enough_data`.
 - **`form_check` (v1.4, optional, null when no form was passed):** `{"name_on_form": "KARTHIK R", "name_on_documents": "R. KARTHIK", "name_tier": "match", "dob_on_form": "1998-04-12", "dob_match": true}`. The operator-typed name is compared with the Aadhaar front (else the first named document) using the same tier logic: `mismatch` → `FORM_NAME_MISMATCH` (blocking), `likely_match` → `FORM_NAME_VARIANT` (warning, officer); a different DOB → `FORM_DOB_MISMATCH` (blocking). This catches the e-Sevai CAN problem: the typed name is what gets printed on the certificate.
 
+### Citizen (CAN profile, v1.5)
+```json
+{"can": "CAN2026000123", "name": "KARTHIK R", "dob": "1998-04-12", "phone_masked": "98XXXXXX21",
+ "address_line": "27, Gandhi Street, Sulur", "pin_code": "641402", "created_at": "..."}
+```
+- Created once and **never edited** (there is no PATCH). Its `name`/`dob` are what e-Sevai prints on the certificate.
+- Looked up by phone: the server stores `phone_hmac` (keyed HMAC, `app.core.security.phone_hmac`) and `phone_masked`,
+  never the raw number. One CAN per phone number.
+- An application created with `can` copies `citizen_name`/`citizen_dob` from the CAN, and the form-vs-document check
+  (`check_consistency(docs, form=...)`) uses those values.
+
 ### Office
 ```json
 {"id": "off_sulur_es2", "name": "e-Sevai Centre – Sulur 2", "type": "esevai_centre",
@@ -144,7 +156,7 @@ When OCR ran, these become:
 
 ### ApplicationSummary
 ```json
-{"id": "app_7f3a91", "citizen_name": "KARTHIK R", "citizen_dob": "1998-04-12", "phone_masked": "98XXXXXX21",
+{"id": "app_7f3a91", "citizen_name": "KARTHIK R", "citizen_dob": "1998-04-12", "can_id": "CAN2026000123", "phone_masked": "98XXXXXX21",
  "service": "community_certificate", "office_id": "off_sulur_es2", "office_name": "e-Sevai Centre – Sulur 2",
  "status": "needs_fix", "created_at": "...", "updated_at": "...",
  "sla_due_at": "...", "sla_hours_left": 41.5,
@@ -232,7 +244,7 @@ This is produced by Person 2's `ops/metrics_ops.py`.
 | 2 | `POST /api/validate` | P1 | multipart `file`, optional form `declared_type` | `ValidationResult` (not persisted) |
 | 3 | `GET /api/metrics/detection` | P1 | none | `DetectionMetrics` (reads `engine/evaluation/results.json`, or the fixture if that file is missing) |
 | 4 | `GET /api/offices` | P2 | none | `Office[]` |
-| 5 | `POST /api/applications` | P2 | `{"citizen_name","phone","service","office_id","citizen_dob"?}` (v1.4) | `ApplicationSummary` (201) |
+| 5 | `POST /api/applications` | P2 | `{"citizen_name","phone","service","office_id","citizen_dob"?,"can"?}` (v1.4; v1.5: with `can`, name/DOB/phone come from the CAN and the typed values are ignored) | `ApplicationSummary` (201) |
 | 6 | `GET /api/applications` | P2 | query `status?`, `office_id?`, `stage?` (v1.4), `limit=50`, `offset=0` | `{"items": ApplicationSummary[], "total": int}`. Sorted: `ready_for_officer` first, then by `sla_hours_left` ascending |
 | 7 | `GET /api/applications/{id}` | P2 | none | `ApplicationDetail` |
 | 8 | `POST /api/applications/{id}/documents` | P2 (calls P1 functions) | multipart `file`, form `declared_type` | `{"document_id": str, "validation": ValidationResult, "application": ApplicationSummary, "consistency": ConsistencyResult}` |
@@ -243,6 +255,8 @@ This is produced by Person 2's `ops/metrics_ops.py`.
 | 13 | `GET /api/metrics/operations` | P2 | query `days=30` | `OperationsMetrics` |
 | 14 | `POST /api/issues` / `GET /api/issues` | P2 | Issue report fields without `id`/`created_at` | `Issue` / `Issue[]` |
 | 15 | `GET /api/notifications` | P2 | query `application_id?` | `Notification[]`, newest first |
+| 17 | `POST /api/citizens` (v1.5) | P2 | `{"name","dob","phone","address_line"?,"pin_code"?}` | `Citizen`: 201 if created, 200 with the existing CAN if the phone already has one (create-or-find) |
+| 18 | `GET /api/citizens/{can}` (v1.5) | P2 | none | `Citizen`, or 404 |
 | 16 | `GET /api/reports/weekly.pdf` | P2 (stretch) | query `office_id?` | `application/pdf` |
 
 ---
@@ -293,7 +307,8 @@ def delete_image(document_id: str) -> None: ...
 | Table | Columns |
 |---|---|
 | `Office` | id, name, type, taluk, lat, lng |
-| `Application` | id, citizen_name, citizen_dob (v1.4), stage (v1.4), stage_entered_at (v1.4), phone_masked, service, office_id, status, created_at, updated_at, sla_due_at, resubmissions, decision_action, decision_reason, decision_note, decided_at, consistency_json, is_seed |
+| `Citizen` (v1.5) | id (the CAN), name, dob, phone_hmac (unique), phone_masked, address_line, pin_code, created_at |
+| `Application` | id, citizen_name, citizen_dob (v1.4), can_id (v1.5), stage (v1.4), stage_entered_at (v1.4), phone_masked, service, office_id, status, created_at, updated_at, sla_due_at, resubmissions, decision_action, decision_reason, decision_note, decided_at, consistency_json, is_seed |
 | `Document` | id, application_id, doc_type, declared_type, status, issues_json, fields_json, extracted_json, aadhaar_hmac, phash, image_path, uploaded_at, is_seed |
 | `AppEvent` | id, application_id, at, event, actor, note |
 | `Alert` | id, rule, severity, office_id, title_en, detail_en, evidence_json, suggested_action_en, status, created_at, dedupe_key |
