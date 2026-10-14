@@ -3,7 +3,7 @@
 Creates an application, uploads demo images 01 -> 02 -> 03 -> 05 and checks the statuses:
 fixable, accepted, accepted, accepted, and the application ends as ready_for_officer.
 
-Usage (backend running):  python scripts/smoke_test.py [--base http://localhost:8000]
+Usage (backend running):  python scripts/smoke_test.py [--base http://127.0.0.1:8000]
 """
 import json
 import re
@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "demo" / "images"
-BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "http://localhost:8000"
+BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "http://127.0.0.1:8000"
 
 
 def call(method: str, path: str, body: bytes | None = None, ctype: str | None = None):
@@ -74,8 +74,17 @@ def main() -> int:
                f"-> {last['application']['status']}")
         expect("consistency likely_match", last["consistency"]["name_tier"] == "likely_match",
                f"-> {last['consistency']['name_tier']}")
-    st, lst = call("GET", "/api/applications?status=ready_for_officer")
-    expect("appears in officer queue", st == 200 and any(i["id"] == app_id for i in lst.get("items", [])))
+    # Seeded data puts thousands of applications in the queue: page through this office's queue.
+    found, offset = False, 0
+    while not found:
+        st, lst = call("GET", f"/api/applications?status=ready_for_officer&office_id={app['office_id']}"
+                              f"&limit=200&offset={offset}")
+        items = lst.get("items", []) if st == 200 else []
+        found = any(i["id"] == app_id for i in items)
+        offset += 200
+        if not items or offset >= lst.get("total", 0):
+            break
+    expect("appears in officer queue", found)
     st, detail = call("GET", f"/api/applications/{app_id}")
     doc_id = detail["documents"][-1]["id"] if st == 200 and detail.get("documents") else None
     if doc_id:

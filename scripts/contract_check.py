@@ -1,6 +1,6 @@
 """Compare live API response shapes with contract/fixtures. Prints PASS / FAIL / SKIP per endpoint.
 
-Usage (backend running):  python scripts/contract_check.py [--base http://localhost:8000]
+Usage (backend running):  python scripts/contract_check.py [--base http://127.0.0.1:8000]
 Exit code 1 if any endpoint FAILs. 404 (not implemented yet) is a SKIP.
 """
 import io
@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FIX = ROOT / "contract" / "fixtures"
-BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "http://localhost:8000"
+BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "http://127.0.0.1:8000"
 
 # Free-form objects whose keys legitimately vary.
 FREE_FORM = {"evidence", "fields"}
