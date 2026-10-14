@@ -10,12 +10,24 @@ from app.core.models import AppEvent, Application, Document, iso, new_id
 from app.ops.clock import now
 from app.ops.schemas import (ApplicationDetailOut, ApplicationSummaryOut, DecisionOut, DocumentOut,
                              HistoryEventOut)
-from app.ops.status import REQUIRED_SLOTS, compute_app_status, effective_app_issues, latest_by_slot
+from app.ops.services import next_stage, required_slots_for, stage_sla_hours
+from app.ops.status import compute_app_status, effective_app_issues, latest_by_slot
 from app.validation.api import check_consistency
 from app.validation.types import ConsistencyResult, ExtractedDoc, Issue
 
 SLA = timedelta(hours=72)
 DECIDED = ("approved", "rejected")
+
+
+def stage_fields(app: Application, ref) -> dict:
+    """citizen_dob + the stage SLA fields (contract v1.4). `ref` is the time to measure stage_sla_hours_left from."""
+    due = None
+    left = None
+    if app.stage and app.stage_entered_at is not None:
+        due_dt = app.stage_entered_at + timedelta(hours=stage_sla_hours(app.stage))
+        due = iso(due_dt)
+        left = round((due_dt - ref).total_seconds() / 3600, 1)
+    return {"citizen_dob": app.citizen_dob, "stage": app.stage, "stage_due_at": due, "stage_sla_hours_left": left}
 
 
 def get_app(session: Session, app_id: str) -> Application:
@@ -56,15 +68,30 @@ def add_event(session: Session, app_id: str, event: str, actor: str, note: str |
 
 
 def recompute(app: Application, docs: list[Document]) -> ConsistencyResult:
-    """Re-run consistency on the latest document of each slot, cache it, and update the status."""
+    """Re-run consistency on the latest document of each slot, cache it, and update the status and stage."""
     latest = latest_by_slot(docs)
+    required = required_slots_for(app.service)
     extracted = [ExtractedDoc.from_dict(json.loads(d.extracted_json)) for d in latest.values() if d.extracted_json]
-    raw = check_consistency(extracted)
-    consistency = raw.model_copy(update={"issues": effective_app_issues(raw.issues, set(latest))})
+    # v1.4 form-vs-document check: the operator-typed name/DOB is what gets printed, so compare it too.
+    form = {"name": app.citizen_name, "dob": app.citizen_dob}
+    raw = check_consistency(extracted, form=form)
+    consistency = raw.model_copy(update={"issues": effective_app_issues(raw.issues, set(latest), required)})
     app.consistency_json = consistency.model_dump_json()
     if app.status not in DECIDED:
-        app.status = compute_app_status({slot: d.status for slot, d in latest.items()}, consistency.issues)
+        app.status = compute_app_status({slot: d.status for slot, d in latest.items()}, consistency.issues, required)
+        _sync_stage(app)
     return consistency
+
+
+def _sync_stage(app: Application) -> None:
+    """Entering ready_for_officer starts the officer chain at VAO; leaving it clears the stage (contract v1.4)."""
+    if app.status == "ready_for_officer":
+        if app.stage is None:
+            app.stage = "vao"
+            app.stage_entered_at = now()
+    elif app.status not in DECIDED:
+        app.stage = None
+        app.stage_entered_at = None
 
 
 def blocking_issues(docs: list[Document], consistency: ConsistencyResult) -> list[Issue]:
@@ -88,7 +115,7 @@ def summary(app: Application, office_name: str, docs: list[Document]) -> Applica
         created_at=iso(app.created_at), updated_at=iso(app.updated_at), sla_due_at=iso(app.sla_due_at),
         sla_hours_left=round((app.sla_due_at - end).total_seconds() / 3600, 1),
         flag_codes=_flag_codes(latest, consistency_of(app)), doc_count=len(latest),
-        resubmissions=app.resubmissions)
+        resubmissions=app.resubmissions, **stage_fields(app, end))
 
 
 def _document_out(doc: Document) -> DocumentOut:
@@ -108,9 +135,10 @@ def detail(session: Session, app: Application, office_name: str) -> ApplicationD
     if app.decision_action in ("approve", "reject") and app.decided_at:
         decision = DecisionOut(action=app.decision_action, reason_code=app.decision_reason,  # type: ignore[arg-type]
                                note=app.decision_note, at=iso(app.decided_at))
+    slot_order = (*required_slots_for(app.service), *(s for s in latest if s not in required_slots_for(app.service)))
     return ApplicationDetailOut(
         **summary(app, office_name, docs).model_dump(),
-        documents=[_document_out(latest[s]) for s in REQUIRED_SLOTS if s in latest],
+        documents=[_document_out(latest[s]) for s in slot_order if s in latest],
         consistency=consistency_of(app),
         history=[HistoryEventOut(at=iso(e.at), event=e.event, actor=e.actor, note=e.note) for e in events],
         decision=decision)

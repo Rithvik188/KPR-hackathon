@@ -18,6 +18,7 @@ FIELDS = {
     "aadhaar_front": {"id_number_display": "XXXX XXXX 4321", "name": "R. KARTHIK", "dob": "1998-04-12",
                       "gender": "M", "father_name": None},
     "aadhaar_back": {"id_number_display": "XXXX XXXX 4321", "pin_code": "641402"},
+    "parent_community_certificate": {"title": "COMMUNITY CERTIFICATE"},
     "pan": {"id_number_display": "ABCPK1234F", "name": "KARTHIK RAJENDRAN", "dob": "1998-04-12", "gender": None,
             "father_name": "RAJENDRAN"},
 }
@@ -35,8 +36,9 @@ def accepted_outcome(image: bytes, declared_type: str | None = None) -> Validati
         doc_type=declared_type or "aadhaar_front", declared_type=declared_type, status="accepted", issues=[],
         quality=Quality(card_found=True, blur_score=300.0, passed=True), fields=fields,
         ocr={"mean_confidence": 0.93, "id_number_confidence": 0.95}, timings_ms=Timings(quality=150, ocr=900, total=1050))
-    extracted = ExtractedDoc(doc_type=result.doc_type, declared_type=declared_type, name=fields.get("name"),
-                             dob=fields.get("dob"), id_last4="4321")
+    extracted = None if declared_type == "parent_community_certificate" else ExtractedDoc(
+        doc_type=result.doc_type, declared_type=declared_type, name=fields.get("name"),
+        dob=fields.get("dob"), id_last4="4321")
     return ValidationOutcome(result=result, card_jpeg=image, extracted=extracted)
 
 
@@ -51,7 +53,7 @@ def blurry_outcome(_: bytes, declared_type: str | None = None) -> ValidationOutc
 def client(monkeypatch):
     monkeypatch.setattr(documents_router, "validate_image", accepted_outcome)
     monkeypatch.setattr(documents_router, "find_duplicates", lambda *a, **k: [])
-    monkeypatch.setattr(ops_service, "check_consistency", lambda docs: ConsistencyResult(name_tier="not_enough_data"))
+    monkeypatch.setattr(ops_service, "check_consistency", lambda docs, form=None: ConsistencyResult(name_tier="not_enough_data"))
     with TestClient(app) as c:
         yield c
 
@@ -96,16 +98,17 @@ def test_full_loop_blur_retake_ready_approve_deletes_images(client, monkeypatch)
     assert second["validation"]["status"] == "accepted"
     assert second["application"]["resubmissions"] == 1
     upload(client, app_id, "aadhaar_back")
-    last = upload(client, app_id, "pan")
+    upload(client, app_id, "pan")
+    last = upload(client, app_id, "parent_community_certificate")
     assert last["application"]["status"] == "ready_for_officer"
-    assert last["application"]["doc_count"] == 3
+    assert last["application"]["doc_count"] == 4
 
     # Ready applications come first in the officer queue.
     listing = client.get("/api/applications").json()
     assert listing["items"][0]["status"] == "ready_for_officer"
 
     detail = client.get(f"/api/applications/{app_id}").json()
-    assert [d["doc_type"] for d in detail["documents"]] == ["aadhaar_front", "aadhaar_back", "pan"]
+    assert [d["doc_type"] for d in detail["documents"]] == ["aadhaar_front", "aadhaar_back", "pan", "parent_community_certificate"]
     assert all(d["image_available"] for d in detail["documents"])
     image = client.get(f"/api/documents/{detail['documents'][0]['id']}/image")
     assert image.status_code == 200 and image.headers["content-type"] == "image/jpeg"
@@ -142,7 +145,7 @@ def test_needs_fix_sms_only_on_transition(client, monkeypatch):
 
 
 def test_back_missing_blocks_only_after_id_proof_attempted(client, monkeypatch):
-    def engine_consistency(docs):
+    def engine_consistency(docs, form=None):
         types = {d.declared_type for d in docs}
         missing = "aadhaar_front" in types and "aadhaar_back" not in types
         return ConsistencyResult(name_tier="not_enough_data",
@@ -154,8 +157,10 @@ def test_back_missing_blocks_only_after_id_proof_attempted(client, monkeypatch):
     assert after_front["application"]["status"] == "submitted"
     assert after_front["consistency"]["issues"] == []
     after_pan = upload(client, app_id, "pan")
-    assert after_pan["application"]["status"] == "needs_fix"
-    assert "AADHAAR_BACK_MISSING" in after_pan["application"]["flag_codes"]
+    assert after_pan["application"]["status"] == "submitted"  # the supporting document hasn't been attempted yet
+    after_support = upload(client, app_id, "parent_community_certificate")
+    assert after_support["application"]["status"] == "needs_fix"  # every other required slot attempted
+    assert "AADHAAR_BACK_MISSING" in after_support["application"]["flag_codes"]
     sms = client.get("/api/notifications", params={"application_id": app_id}).json()
     assert "back side of the Aadhaar" in sms[0]["body_en"]
     after_back = upload(client, app_id, "aadhaar_back")

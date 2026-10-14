@@ -9,7 +9,8 @@ from app.validation.types import ConsistencyResult, DocStatus, DocType, Issue, V
 
 Service = Literal["community_certificate", "income_certificate", "nativity_certificate", "ration_card_update"]
 AppStatus = Literal["submitted", "needs_fix", "ready_for_officer", "approved", "rejected"]
-OfficerAction = Literal["approve", "reject", "request_fix"]
+OfficerAction = Literal["approve", "reject", "request_fix", "forward"]
+Stage = Literal["vao", "ri", "tahsildar"]
 OfficeType = Literal["taluk_office", "esevai_centre"]
 IssueCategory = Literal["scanner_problem", "long_wait", "wrong_rejection", "other"]
 ReporterRole = Literal["citizen", "operator", "officer"]
@@ -29,22 +30,28 @@ class CreateApplicationIn(BaseModel):
     phone: str = Field(min_length=10, max_length=16)
     service: Service
     office_id: str
+    citizen_dob: str | None = None  # ISO date typed by the operator (contract v1.4)
 
 
 class OfficerActionIn(BaseModel):
     action: OfficerAction
     reason_code: str | None = None
     note: str | None = Field(default=None, max_length=500)
+    role: Stage | None = None  # when set, must equal the application's current stage (contract v1.4)
 
 
 class ApplicationSummaryOut(BaseModel):
     id: str
     citizen_name: str
+    citizen_dob: str | None = None
     phone_masked: str
     service: Service
     office_id: str
     office_name: str
     status: AppStatus
+    stage: Stage | None = None
+    stage_due_at: str | None = None
+    stage_sla_hours_left: float | None = None
     created_at: str
     updated_at: str
     sla_due_at: str
