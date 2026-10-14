@@ -79,6 +79,12 @@
     --danger: #b91c1c;
     --danger-soft: #fee2e2;
 
+    /* Chart series (validated categorical slots; aqua < 3:1 on white, so charts ship a legend + table view) */
+    --series-1: #2a78d6;
+    --series-2: #1baf7a;
+    --series-3: #eb6834;
+    --grid: #e8ebef;
+
     --chart-1: #1e3a8a;
     --chart-2: #0f766e;
     --chart-3: #d97706;

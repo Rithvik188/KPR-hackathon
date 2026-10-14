@@ -31,8 +31,8 @@ from app.validation.messages import make_issue
 from app.validation.types import ConsistencyResult, doc_status
 
 IST = timezone(timedelta(hours=5, minutes=30))
-RNG_SEED = 22  # chosen so only the planted stories fire at any time of day (see tests/ops)
-DAYS = 30
+RNG_SEED = 16  # chosen so only the planted stories fire at any time of day (see tests/ops)
+DAYS = 35  # 5 warm-up days so the 30-day charts start in steady state (no ramp-up artefact)
 VOLUME = {"taluk_office": 10, "esevai_centre": 6}  # Poisson mean applications per day
 BASELINE = {"BLUR": 0.09, "GLARE": 0.06, "AADHAAR_BACK_MISSING": 0.05, "CROPPED": 0.04, "TOO_DARK": 0.03,
             "LOW_RESOLUTION": 0.02, "NAME_MISMATCH": 0.02, "DOB_MISMATCH": 0.01, "INVALID_CHECKSUM": 0.01}
