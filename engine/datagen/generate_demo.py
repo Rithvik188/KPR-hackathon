@@ -13,6 +13,7 @@ from pathlib import Path
 from datagen.capture import CaptureSpec, capture
 from datagen.identities import Person
 from datagen.numbers import make_aadhaar, make_epic, make_invalid_aadhaar, make_pan
+from datagen.pages import render_page
 from datagen.templates import render
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "demo" / "images"
@@ -32,6 +33,11 @@ def build(seed: int) -> dict[str, bytes]:
                         noise_sigma=spec.pop("noise_sigma", 3.0), jpeg_quality=spec.pop("jpeg_quality", 88), **spec)
         return capture(render(doc, person, number, name, rng), s, "B", rng)
 
+    def page(doc, person, **spec) -> bytes:
+        s = CaptureSpec(card_width=spec.pop("card_width", 1000), rotation_deg=spec.pop("rotation_deg", 2.0),
+                        noise_sigma=spec.pop("noise_sigma", 3.0), jpeg_quality=spec.pop("jpeg_quality", 88), **spec)
+        return capture(render_page(doc, person, rng), s, "B", rng)
+
     return {
         "01_aadhaar_front_blurry.jpg": shot("aadhaar_front", karthik, aadhaar, karthik.initial_first, blur_sigma=4.2),
         "02_aadhaar_front_clean.jpg": shot("aadhaar_front", karthik, aadhaar, karthik.initial_first),
@@ -43,6 +49,12 @@ def build(seed: int) -> dict[str, bytes]:
         "07_voter_clean.jpg": shot("voter_id", karthik, epic, karthik.initial_last, rotation_deg=3.0),
         "08_aadhaar_invalid_number.jpg": shot("aadhaar_front", meena, make_invalid_aadhaar(rng), meena.initial_first),
         "09_pan_other_person.jpg": shot("pan", other, make_pan(rng, other.father), other.full),
+        # Supporting documents (contract v1.4)
+        "10_parent_community_certificate.jpg": page("parent_community_certificate", karthik),
+        "11_birth_certificate.jpg": page("birth_certificate", karthik, rotation_deg=-2.0),
+        "12_income_proof.jpg": page("income_proof", karthik),
+        "13_birth_certificate_blurry.jpg": page("birth_certificate", karthik, blur_sigma=4.5),
+        "14_address_proof.jpg": page("address_proof", karthik, rotation_deg=1.5),
     }
 
 
@@ -51,7 +63,12 @@ EXPECT = {"01": ("aadhaar_front", "fixable", "BLUR"), "02": ("aadhaar_front", "a
           "03": ("aadhaar_back", "accepted", None), "04": ("pan", "fixable", "GLARE"),
           "05": ("pan", "accepted", None), "06": ("voter_id", "fixable", "CROPPED"),
           "07": ("voter_id", "accepted", None), "08": ("aadhaar_front", "invalid", "INVALID_CHECKSUM"),
-          "09": ("pan", "accepted", None)}
+          "09": ("pan", "accepted", None),
+          "10": ("parent_community_certificate", "accepted", "CONTENT_NOT_VERIFIED"),
+          "11": ("birth_certificate", "accepted", "CONTENT_NOT_VERIFIED"),
+          "12": ("income_proof", "accepted", "CONTENT_NOT_VERIFIED"),
+          "13": ("birth_certificate", "fixable", "BLUR"),
+          "14": ("address_proof", "accepted", "CONTENT_NOT_VERIFIED")}
 
 
 def verify(images: dict[str, bytes]) -> list[str]:

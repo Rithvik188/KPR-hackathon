@@ -4,13 +4,16 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-DocType = Literal["aadhaar_front", "aadhaar_back", "pan", "voter_id", "unknown"]
+DocType = Literal["aadhaar_front", "aadhaar_back", "pan", "voter_id", "unknown", "parent_community_certificate",
+                  "birth_certificate", "income_proof", "address_proof"]
 DocStatus = Literal["accepted", "fixable", "invalid"]
 Severity = Literal["blocking", "warning", "info"]
 Audience = Literal["citizen", "officer"]
 NameTier = Literal["match", "likely_match", "mismatch", "not_enough_data"]
 
-DECLARABLE_TYPES = ("aadhaar_front", "aadhaar_back", "pan", "voter_id")
+ID_TYPES = ("aadhaar_front", "aadhaar_back", "pan", "voter_id")
+SUPPORTING_TYPES = ("parent_community_certificate", "birth_certificate", "income_proof", "address_proof")
+DECLARABLE_TYPES = ID_TYPES + SUPPORTING_TYPES
 
 
 class Issue(BaseModel):
@@ -62,6 +65,8 @@ class ConsistencyResult(BaseModel):
     names_compared: list[str] = Field(default_factory=list)
     dob_match: bool | None = None
     issues: list[Issue] = Field(default_factory=list)
+    # v1.4: operator-typed form vs documents; None unless check_consistency(..., form=...) was used
+    form_check: dict[str, Any] | None = None
 
 
 @dataclass
