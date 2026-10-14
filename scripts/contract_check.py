@@ -107,7 +107,7 @@ def main() -> int:
     except urllib.error.URLError as e:
         print(f"Backend not reachable at {BASE}: {e}")
         return 1
-    check("GET /api/health", st, live, {"status": "ok", "ocr_engine": "easyocr", "ocr_gpu": False, "ocr_ready": False, "version": "1.1"})
+    check("GET /api/health", st, live, {"status": "ok", "ocr_engine": "easyocr", "ocr_gpu": False, "ocr_ready": False, "version": "1.3"})
     if st == 200 and live.get("status") != "ok":
         results[-1] = ("GET /api/health", "FAIL", [f"status={live.get('status')}"])
 
