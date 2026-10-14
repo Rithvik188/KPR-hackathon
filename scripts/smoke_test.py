@@ -1,7 +1,9 @@
-"""End-to-end smoke test through the HTTP API (needs Person 2's ops endpoints, i.e. after Sync 2).
+"""End-to-end smoke test through the HTTP API (needs Person 2's ops endpoints).
 
-Creates an application, uploads demo images 01 -> 02 -> 03 -> 05 and checks the statuses:
-fixable, accepted, accepted, accepted, and the application ends as ready_for_officer.
+Creates a community-certificate application (operator types "KARTHIK R", DOB 1998-04-12), uploads demo images
+01 -> 02 -> 03 -> 05 -> 10 (parent's community certificate) and checks: fixable, accepted x4, ready_for_officer,
+likely_match, the form check (contract v1.4) and, when the server has stages, the VAO -> RI -> Tahsildar chain.
+Checks for v1.4 features are skipped (not failed) on a server that does not have them yet.
 
 Usage (backend running):  python scripts/smoke_test.py [--base http://127.0.0.1:8000]
 """
@@ -49,8 +51,8 @@ def main() -> int:
     if st != 200 or not offices:
         print(f"FAIL  /api/offices -> {st}; ops endpoints not available yet")
         return 1
-    payload = json.dumps({"citizen_name": "KARTHIK R", "phone": "9876543221", "service": "community_certificate",
-                          "office_id": offices[0]["id"]}).encode()
+    payload = json.dumps({"citizen_name": "KARTHIK R", "citizen_dob": "1998-04-12", "phone": "9876543221",
+                          "service": "community_certificate", "office_id": offices[0]["id"]}).encode()
     st, app = call("POST", "/api/applications", payload, "application/json")
     expect("create application", st == 201, f"(HTTP {st})")
     if st != 201:
@@ -59,10 +61,14 @@ def main() -> int:
     steps = [("01_aadhaar_front_blurry.jpg", "aadhaar_front", "fixable"),
              ("02_aadhaar_front_clean.jpg", "aadhaar_front", "accepted"),
              ("03_aadhaar_back_clean.jpg", "aadhaar_back", "accepted"),
-             ("05_pan_clean_initials.jpg", "pan", "accepted")]
+             ("05_pan_clean_initials.jpg", "pan", "accepted"),
+             ("10_parent_community_certificate.jpg", "parent_community_certificate", "accepted")]
     last = None
     for name, declared, want in steps:
         st, res = upload(app_id, DEMO / name, declared)
+        if declared == "parent_community_certificate" and st != 200:
+            print(f"SKIP  upload {name} (HTTP {st}: server predates contract v1.4 supporting documents)")
+            continue
         got = res["validation"]["status"] if st == 200 else f"HTTP {st}"
         expect(f"upload {name}", got == want, f"-> {got}")
         last = res if st == 200 else last
@@ -74,6 +80,12 @@ def main() -> int:
                f"-> {last['application']['status']}")
         expect("consistency likely_match", last["consistency"]["name_tier"] == "likely_match",
                f"-> {last['consistency']['name_tier']}")
+        fc = last["consistency"].get("form_check")
+        if fc:
+            expect("form check: typed name matches documents", fc.get("name_tier") == "match", f"-> {fc}")
+            expect("form check: typed DOB matches documents", fc.get("dob_match") is True, f"-> {fc}")
+        else:
+            print("SKIP  form check (server predates contract v1.4 form_check)")
     # Seeded data puts thousands of applications in the queue: page through this office's queue.
     found, offset = False, 0
     while not found:
@@ -90,9 +102,24 @@ def main() -> int:
     if doc_id:
         st, _ = call("GET", f"/api/documents/{doc_id}/image")
         expect("officer can see card image", st == 200)
-    st, _ = call("PATCH", f"/api/applications/{app_id}", json.dumps({"action": "approve"}).encode(),
-                 "application/json")
-    expect("approve", st == 200, f"(HTTP {st})")
+    def patch(body: dict):
+        return call("PATCH", f"/api/applications/{app_id}", json.dumps(body).encode(), "application/json")
+
+    if last and last["application"].get("stage") == "vao":  # contract v1.4 officer chain
+        st, summ = patch({"action": "approve", "role": "vao"})
+        expect("VAO cannot approve (409)", st == 409, f"(HTTP {st})")
+        st, summ = patch({"action": "forward", "role": "vao"})
+        expect("VAO forwards -> RI", st == 200 and summ.get("stage") == "ri", f"(HTTP {st})")
+        st, summ = patch({"action": "forward", "role": "vao"})
+        expect("stale role rejected (409 STAGE_MISMATCH)", st == 409, f"(HTTP {st})")
+        st, summ = patch({"action": "forward", "role": "ri"})
+        expect("RI forwards -> Tahsildar", st == 200 and summ.get("stage") == "tahsildar", f"(HTTP {st})")
+        st, _ = patch({"action": "approve", "role": "tahsildar"})
+        expect("Tahsildar approves", st == 200, f"(HTTP {st})")
+    else:
+        print("SKIP  stage chain (server predates contract v1.4 stages)")
+        st, _ = patch({"action": "approve"})
+        expect("approve", st == 200, f"(HTTP {st})")
     if doc_id:
         st, _ = call("GET", f"/api/documents/{doc_id}/image")
         expect("image deleted after decision (404)", st == 404, f"(HTTP {st})")
