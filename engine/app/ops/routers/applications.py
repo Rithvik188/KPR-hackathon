@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 
 from app.core.db import get_session
 from app.core.errors import api_error
-from app.core.models import Application, Office, new_id
+from app.core.models import Application, Citizen, Office, new_id
 from app.ops.clock import now as utc_now
 from app.core.security import mask_phone
 from app.core.storage import delete_image
@@ -28,13 +28,23 @@ def create_application(body: CreateApplicationIn, session: Session = Depends(get
     office = session.get(Office, body.office_id)
     if office is None:
         raise api_error(400, "UNKNOWN_OFFICE", f"No office {body.office_id}")
-    digits = re.sub(r"\D", "", body.phone)[-10:]
-    if not _PHONE.match(digits):
-        raise api_error(422, "INVALID_PHONE", "Enter a 10-digit mobile number starting with 6, 7, 8 or 9")
+    if body.can:  # contract v1.5: the CAN profile is the source of truth (it is what the certificate prints)
+        citizen = session.get(Citizen, body.can.strip().upper())
+        if citizen is None:
+            raise api_error(400, "UNKNOWN_CAN", f"No citizen with CAN {body.can}")
+        name, dob, masked, can_id = citizen.name, citizen.dob, citizen.phone_masked, citizen.id
+    else:
+        if not body.citizen_name or not body.phone:
+            raise api_error(422, "MISSING_CITIZEN", "Give either a CAN or the citizen's name and phone")
+        digits = re.sub(r"\D", "", body.phone)[-10:]
+        if not _PHONE.match(digits):
+            raise api_error(422, "INVALID_PHONE", "Enter a 10-digit mobile number starting with 6, 7, 8 or 9")
+        name, dob, masked, can_id = (" ".join(body.citizen_name.split()).upper(), body.citizen_dob or None,
+                                     mask_phone(digits), None)
     now = utc_now()
-    app = Application(id=new_id("app"), citizen_name=" ".join(body.citizen_name.split()).upper(),
-                      citizen_dob=(body.citizen_dob or None), phone_masked=mask_phone(digits), service=body.service,
-                      office_id=office.id, status="submitted", created_at=now, updated_at=now, sla_due_at=now + SLA)
+    app = Application(id=new_id("app"), citizen_name=name, citizen_dob=dob, can_id=can_id, phone_masked=masked,
+                      service=body.service, office_id=office.id, status="submitted", created_at=now, updated_at=now,
+                      sla_due_at=now + SLA)
     session.add(app)
     add_event(session, app.id, "application_created", "operator")
     session.commit()
