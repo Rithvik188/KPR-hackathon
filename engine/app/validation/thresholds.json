@@ -1,4 +1,17 @@
-{"card_min_area_frac": 0.12, "crop_border_px": 6, "min_card_width_px": 650, "blur_min": 100,
- "glare_v": 245, "glare_s": 40, "glare_blob_frac": 0.015, "dark_max": 60, "bright_min": 205,
- "ocr_min_confidence_for_rules": 0.85, "classify_min_score": 2, "phash_max_distance": 6,
- "name_match_min": 92, "name_likely_min": 80}
+{
+ "card_min_area_frac": 0.12,
+ "crop_border_px": 6,
+ "min_card_width_px": 650,
+ "blur_min": 100,
+ "glare_v": 245,
+ "glare_s": 40,
+ "glare_blob_frac": 0.015,
+ "dark_max": 60,
+ "bright_min": 205,
+ "ocr_min_confidence_for_rules": 0.85,
+ "classify_min_score": 2,
+ "phash_max_distance": 6,
+ "name_match_min": 92,
+ "name_likely_min": 80,
+ "crop_aspect_tol": 0.2
+}
