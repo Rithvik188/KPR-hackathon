@@ -36,7 +36,7 @@ export interface Quality {
 }
 
 /** id_number_display, name, dob, gender, father_name (aadhaar_back: id_number_display, pin_code) */
-export type DocFields = Record<string, string | null>
+export type DocFields = Record<string, unknown>
 
 export interface ValidationResult {
   document_id: string | null

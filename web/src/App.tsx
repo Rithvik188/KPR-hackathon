@@ -3,7 +3,7 @@ import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { TopBar } from '@/components/TopBar'
 import { useLang } from '@/i18n'
 import { ComingSoon } from '@/pages/ComingSoon'
-import { CounterPage } from '@/pages/CounterPage'
+import { CounterPage } from '@/pages/counter/CounterPage'
 
 function Layout() {
   return (
