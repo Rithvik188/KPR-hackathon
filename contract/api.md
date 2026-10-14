@@ -1,8 +1,9 @@
 # SevaiCheck API Contract
 
-**Version: 1.3** (bump on every change; see the CLAUDE.md section on the contract change protocol)
+**Version: 1.4** (bump on every change; see the CLAUDE.md section on the contract change protocol)
 
 **Changelog**
+- 1.4 (additive): service-specific supporting documents (`contract/services.json`, 4 new DocTypes); form-vs-document check (`citizen_dob` on applications, `form` argument to `check_consistency`, `ConsistencyResult.form_check`, issue codes `FORM_NAME_MISMATCH`, `FORM_NAME_VARIANT`, `FORM_DOB_MISMATCH`, `CONTENT_NOT_VERIFIED`); stage-aware officer chain VAO → RI → Tahsildar (`stage`, `stage_due_at`, `stage_sla_hours_left`, OfficerAction `forward`, PATCH `role`, `GET /applications?stage=`).
 - 1.3: `ApplicationDetail.documents[].declared_type` (string or null).
 - 1.2: `Application.consistency_json` (optional, latest ConsistencyResult cached by ops).
 - 1.1: `Document.declared_type` + slot grouping by declared type; `AADHAAR_BACK_MISSING` timing rule; nullable quality fields; `name_score` and multi-document tier definitions; `ExtractedDoc` fields spelled out.
@@ -21,7 +22,7 @@
 
 | Enum | Values |
 |---|---|
-| `DocType` | `aadhaar_front`, `aadhaar_back`, `pan`, `voter_id`, `unknown` |
+| `DocType` | `aadhaar_front`, `aadhaar_back`, `pan`, `voter_id`, `unknown`; supporting (v1.4): `parent_community_certificate`, `birth_certificate`, `income_proof`, `address_proof` |
 | `DocStatus` | `accepted`, `fixable`, `invalid` |
 | `AppStatus` | `submitted`, `needs_fix`, `ready_for_officer`, `approved`, `rejected` |
 | `IssueSeverity` | `blocking`, `warning`, `info` |
@@ -34,7 +35,8 @@
 | `Service` | `community_certificate`, `income_certificate`, `nativity_certificate`, `ration_card_update` |
 | `IssueCategory` | `scanner_problem`, `long_wait`, `wrong_rejection`, `other` |
 | `ReporterRole` | `citizen`, `operator`, `officer` |
-| `OfficerAction` | `approve`, `reject`, `request_fix` |
+| `OfficerAction` | `approve`, `reject`, `request_fix`, `forward` (v1.4) |
+| `Stage` (v1.4) | `vao`, `ri`, `tahsildar` (order and per-stage SLA hours in `contract/services.json` → `stages`) |
 
 ### Issue codes
 
@@ -63,6 +65,10 @@ Messages (`msg_en`, `msg_ta`) live in `contract/messages.json`, and the backend 
 | `NAME_LIKELY_MATCH` | consistency | warning | officer | (application level) |
 | `NAME_MISMATCH` | consistency | blocking | citizen | (application level) |
 | `DOB_MISMATCH` | consistency | blocking | citizen | (application level) |
+| `FORM_NAME_MISMATCH` (v1.4) | form | blocking | citizen | (application level) |
+| `FORM_NAME_VARIANT` (v1.4) | form | warning | officer | (application level) |
+| `FORM_DOB_MISMATCH` (v1.4) | form | blocking | citizen | (application level) |
+| `CONTENT_NOT_VERIFIED` (v1.4) | supporting doc | info | officer | (no effect) |
 
 **DocStatus rule:**
 - `invalid` if there is any `INVALID_*` issue.
@@ -70,7 +76,7 @@ Messages (`msg_en`, `msg_ta`) live in `contract/messages.json`, and the backend 
 - Otherwise `accepted`.
 
 **AppStatus rule** (implemented by Person 2 in `ops/status.py`):
-- The required documents are `aadhaar_front` + `aadhaar_back` + (`pan` or `voter_id`).
+- The required documents are `aadhaar_front` + `aadhaar_back` + (`pan` or `voter_id`) **plus the service's supporting document** from `contract/services.json` → `services.<service>.required` (v1.4).
 - **Slots are keyed by `declared_type`**, not the detected `doc_type`. A quality early-return has `doc_type = "unknown"`, but it still belongs to the slot the operator uploaded into. "Latest document per slot" and the resubmission counter both use `declared_type`.
 - **`AADHAAR_BACK_MISSING` while collecting:** the engine always reports it when the front is present and the back is absent. Ops treats it as blocking **only once every other required slot has been attempted** (or the operator presses "Finish"). Before that, the application stays `submitted`, and no notification is sent for it.
 - Notifications are sent only on a **transition into** `needs_fix`, not on every upload that stays `needs_fix`.
@@ -117,6 +123,7 @@ When OCR ran, these become:
 - `id_number_display` is masked for Aadhaar. PAN and EPIC numbers are shown in full.
 - `aadhaar_back` has no name or DOB. Its `fields` are `{"id_number_display": "...", "pin_code": "641402"}`.
 - `document_id` is `null` from `/api/validate`, and set when a document is uploaded to an application.
+- **Supporting documents (v1.4):** with a supporting `declared_type`, the engine runs page-quality checks (blur, glare, exposure, resolution on the whole photo; no card detection, so never `CARD_NOT_FOUND`/`CROPPED`) and a keyword check. Text that clearly belongs to another document type → `WRONG_DOC_TYPE`; otherwise `accepted` with an info `CONTENT_NOT_VERIFIED` issue (the officer verifies the contents). `doc_type` = the declared type, `fields` = `{"title": "<detected heading or null>"}`, `extracted` and `aadhaar_hmac` are `None`.
 
 ### ConsistencyResult
 ```json
@@ -127,6 +134,7 @@ When OCR ran, these become:
 - `name_score` is the rapidfuzz `token_sort_ratio` of the two **full, normalised** name strings (0–100). When an initial was expanded, the expansion is recorded in the `NAME_LIKELY_MATCH` evidence (`"initial_expanded": "R→RAJENDRAN"`), and the score is still the full-string score.
 - With more than two named documents, the Aadhaar front name is compared with each other document, and the **worst** pair (mismatch < likely_match < match) is reported.
 - `name_score`, `names_compared` and `dob_match` are `null` / `[]` / `null` when `name_tier` is `not_enough_data`.
+- **`form_check` (v1.4, optional, null when no form was passed):** `{"name_on_form": "KARTHIK R", "name_on_documents": "R. KARTHIK", "name_tier": "match", "dob_on_form": "1998-04-12", "dob_match": true}`. The operator-typed name is compared with the Aadhaar front (else the first named document) using the same tier logic: `mismatch` → `FORM_NAME_MISMATCH` (blocking), `likely_match` → `FORM_NAME_VARIANT` (warning, officer); a different DOB → `FORM_DOB_MISMATCH` (blocking). This catches the e-Sevai CAN problem: the typed name is what gets printed on the certificate.
 
 ### Office
 ```json
@@ -136,12 +144,14 @@ When OCR ran, these become:
 
 ### ApplicationSummary
 ```json
-{"id": "app_7f3a91", "citizen_name": "KARTHIK R", "phone_masked": "98XXXXXX21",
+{"id": "app_7f3a91", "citizen_name": "KARTHIK R", "citizen_dob": "1998-04-12", "phone_masked": "98XXXXXX21",
  "service": "community_certificate", "office_id": "off_sulur_es2", "office_name": "e-Sevai Centre – Sulur 2",
  "status": "needs_fix", "created_at": "...", "updated_at": "...",
  "sla_due_at": "...", "sla_hours_left": 41.5,
- "flag_codes": ["BLUR"], "doc_count": 2, "resubmissions": 1}
+ "flag_codes": ["BLUR"], "doc_count": 2, "resubmissions": 1,
+ "stage": null, "stage_due_at": null, "stage_sla_hours_left": null}
 ```
+- v1.4: `citizen_dob` is the ISO date typed by the operator (or null). `stage` is `null` unless `status == "ready_for_officer"`; an application entering `ready_for_officer` starts at `"vao"`. `stage_due_at` = when the stage was entered + that stage's `sla_hours`; `stage_sla_hours_left` can be negative.
 `sla_due_at` is `created_at` + 72 h. `sla_hours_left` can be negative, which means the SLA has been breached.
 
 ### ApplicationDetail
@@ -222,12 +232,12 @@ This is produced by Person 2's `ops/metrics_ops.py`.
 | 2 | `POST /api/validate` | P1 | multipart `file`, optional form `declared_type` | `ValidationResult` (not persisted) |
 | 3 | `GET /api/metrics/detection` | P1 | none | `DetectionMetrics` (reads `engine/evaluation/results.json`, or the fixture if that file is missing) |
 | 4 | `GET /api/offices` | P2 | none | `Office[]` |
-| 5 | `POST /api/applications` | P2 | `{"citizen_name","phone","service","office_id"}` | `ApplicationSummary` (201) |
-| 6 | `GET /api/applications` | P2 | query `status?`, `office_id?`, `limit=50`, `offset=0` | `{"items": ApplicationSummary[], "total": int}`. Sorted: `ready_for_officer` first, then by `sla_hours_left` ascending |
+| 5 | `POST /api/applications` | P2 | `{"citizen_name","phone","service","office_id","citizen_dob"?}` (v1.4) | `ApplicationSummary` (201) |
+| 6 | `GET /api/applications` | P2 | query `status?`, `office_id?`, `stage?` (v1.4), `limit=50`, `offset=0` | `{"items": ApplicationSummary[], "total": int}`. Sorted: `ready_for_officer` first, then by `sla_hours_left` ascending |
 | 7 | `GET /api/applications/{id}` | P2 | none | `ApplicationDetail` |
 | 8 | `POST /api/applications/{id}/documents` | P2 (calls P1 functions) | multipart `file`, form `declared_type` | `{"document_id": str, "validation": ValidationResult, "application": ApplicationSummary, "consistency": ConsistencyResult}` |
 | 9 | `GET /api/documents/{id}/image` | P2 (uses P1 storage) | none | `image/jpeg` (perspective-corrected card), or 404 if deleted |
-| 10 | `PATCH /api/applications/{id}` | P2 | `{"action": OfficerAction, "reason_code": str?, "note": str?}` | `ApplicationSummary` |
+| 10 | `PATCH /api/applications/{id}` | P2 | `{"action": OfficerAction, "reason_code": str?, "note": str?, "role": Stage?}` | `ApplicationSummary`. v1.4: `forward` moves `vao → ri → tahsildar`; when `role` is given it must equal the current `stage`, else 409 `STAGE_MISMATCH`. `request_fix` is allowed at any stage; `approve`/`reject` only at `tahsildar` when `role` is given. Without `role`, the old single-officer behaviour is kept. |
 | 11 | `GET /api/alerts` | P2 | query `status?` | `Alert[]`, newest first |
 | 12 | `POST /api/alerts/{id}/ack` | P2 | none | `Alert` |
 | 13 | `GET /api/metrics/operations` | P2 | query `days=30` | `OperationsMetrics` |
@@ -254,7 +264,9 @@ def validate_image(image_bytes: bytes, declared_type: str | None = None) -> Vali
 #  ExtractedDoc fields: doc_type, declared_type, name, dob (ISO or None), gender, father_name, id_last4
 #  (never the full ID number)
 
-def check_consistency(docs: list[ExtractedDoc]) -> ConsistencyResult: ...
+def check_consistency(docs: list[ExtractedDoc], form: dict | None = None) -> ConsistencyResult: ...
+#  v1.4: form = {"name": application.citizen_name, "dob": application.citizen_dob (ISO or None)}
+#        adds ConsistencyResult.form_check and FORM_* issues. Omit it for the old behaviour.
 #  Pass the latest accepted/extracted doc of each type in the application.
 #  Includes AADHAAR_BACK_MISSING when aadhaar_front present and aadhaar_back absent.
 
@@ -281,7 +293,7 @@ def delete_image(document_id: str) -> None: ...
 | Table | Columns |
 |---|---|
 | `Office` | id, name, type, taluk, lat, lng |
-| `Application` | id, citizen_name, phone_masked, service, office_id, status, created_at, updated_at, sla_due_at, resubmissions, decision_action, decision_reason, decision_note, decided_at, consistency_json, is_seed |
+| `Application` | id, citizen_name, citizen_dob (v1.4), stage (v1.4), stage_entered_at (v1.4), phone_masked, service, office_id, status, created_at, updated_at, sla_due_at, resubmissions, decision_action, decision_reason, decision_note, decided_at, consistency_json, is_seed |
 | `Document` | id, application_id, doc_type, declared_type, status, issues_json, fields_json, extracted_json, aadhaar_hmac, phash, image_path, uploaded_at, is_seed |
 | `AppEvent` | id, application_id, at, event, actor, note |
 | `Alert` | id, rule, severity, office_id, title_en, detail_en, evidence_json, suggested_action_en, status, created_at, dedupe_key |
