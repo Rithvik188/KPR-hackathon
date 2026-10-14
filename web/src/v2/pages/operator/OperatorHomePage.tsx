@@ -1,4 +1,4 @@
-import { ArrowRight, BellRing, FileText, MapPin, MessageSquareWarning, Newspaper, Store } from 'lucide-react'
+import { ArrowRight, BellRing, FilePlus2, MapPin, MessageSquareWarning, Newspaper, Store } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
@@ -7,7 +7,8 @@ import { useLang } from '@/i18n'
 import { useAuth } from '@/v2/auth'
 import { useNotices } from '@/v2/pages/operator/useNotices'
 
-/** Operator home: same feature-card grid as the citizen home, with Notices in place of Track application. */
+/** Operator home: same feature-card grid as the citizen home, with Notices in place of Track application and
+ * Apply on a citizen's behalf in place of the citizen's own Apply. */
 export function OperatorHomePage() {
   const { t } = useLang()
   const { profile } = useAuth()
@@ -17,7 +18,7 @@ export function OperatorHomePage() {
 
   const features = [
     { to: '/operator/notices', icon: BellRing, title: t('v2.notices.title'), desc: t('v2.home.noticesDesc'), count: open },
-    { to: '/operator/services', icon: FileText, title: t('v2.services.title'), desc: t('v2.operator.schemesDesc') },
+    { to: '/operator/services', icon: FilePlus2, title: t('v2.home.applyForCitizen'), desc: t('v2.home.applyForCitizenDesc') },
     { to: '/operator/centres', icon: MapPin, title: t('v2.home.centres'), desc: t('v2.home.centresDesc') },
     { to: '/operator/news', icon: Newspaper, title: t('v2.home.news'), desc: t('v2.home.newsDesc') },
     {

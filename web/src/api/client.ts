@@ -5,6 +5,8 @@ import type {
   ApplicationList,
   ApplicationSummary,
   AppStatus,
+  Citizen,
+  CitizenInput,
   CreateApplicationInput,
   DeclarableType,
   DetectionMetrics,
@@ -45,7 +47,13 @@ function withQuery(path: string, query?: Query): string {
   return qs ? `${path}?${qs}` : path
 }
 
-async function request<T>(method: string, path: string, body?: FormData | object, query?: Query): Promise<T> {
+/** Like `request`, but also returns the HTTP status (POST /citizens answers 201 created vs 200 found). */
+async function requestWithStatus<T>(
+  method: string,
+  path: string,
+  body?: FormData | object,
+  query?: Query,
+): Promise<{ status: number; data: T }> {
   const init: RequestInit = { method }
   if (body instanceof FormData) {
     init.body = body
@@ -64,7 +72,11 @@ async function request<T>(method: string, path: string, body?: FormData | object
     const err = data?.error
     throw new ApiError(res.status, err?.code ?? `HTTP_${res.status}`, err?.message ?? res.statusText)
   }
-  return data as T
+  return { status: res.status, data: data as T }
+}
+
+async function request<T>(method: string, path: string, body?: FormData | object, query?: Query): Promise<T> {
+  return (await requestWithStatus<T>(method, path, body, query)).data
 }
 
 // ---- fixture mode -------------------------------------------------------------------------------
@@ -111,8 +123,45 @@ export function getOffices(): Promise<Office[]> {
 }
 
 export function createApplication(input: CreateApplicationInput): Promise<ApplicationSummary> {
-  if (USE_FIXTURES) return fixture((f) => ({ ...f.applicationsList.items[0], status: 'submitted', doc_count: 0 }))
+  if (USE_FIXTURES) {
+    return fixture((f) => ({ ...f.applicationsList.items[0], status: 'submitted', doc_count: 0, can_id: input.can ?? null }))
+  }
   return request('POST', '/applications', input)
+}
+
+/** v1.5 create-or-find by phone. `created` is false when the phone already had a CAN (its profile is returned
+ * unchanged: typed name/DOB are ignored for an existing CAN). */
+export async function createOrFindCitizen(input: CitizenInput): Promise<{ citizen: Citizen; created: boolean }> {
+  if (USE_FIXTURES) {
+    // Fixture mode: the demo phone (…21) "already has" the fixture CAN; any other number gets a new one.
+    const existing = input.phone.replace(/\D/g, '').endsWith('21')
+    const citizen = await fixture<Citizen>((f) =>
+      existing
+        ? f.citizen
+        : {
+            ...f.citizen,
+            can: 'CAN2026000124',
+            name: input.name.trim().replace(/\s+/g, ' ').toUpperCase(),
+            dob: input.dob ?? null,
+            phone_masked: maskPhone(input.phone),
+            address_line: input.address_line ?? null,
+            pin_code: input.pin_code ?? null,
+          },
+    )
+    return { citizen, created: !existing }
+  }
+  const { status, data } = await requestWithStatus<Citizen>('POST', '/citizens', input)
+  return { citizen: data, created: status === 201 }
+}
+
+export function getCitizen(can: string): Promise<Citizen> {
+  if (USE_FIXTURES) return fixture((f) => ({ ...f.citizen, can: can.toUpperCase() }))
+  return request('GET', `/citizens/${encodeURIComponent(can)}`)
+}
+
+function maskPhone(phone: string): string {
+  const d = phone.replace(/\D/g, '').slice(-10)
+  return d.length < 4 ? 'X'.repeat(d.length) : d.slice(0, 2) + 'X'.repeat(d.length - 4) + d.slice(-2)
 }
 
 export function listApplications(params: {

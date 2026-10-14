@@ -276,6 +276,8 @@ export interface components {
             citizen_name: string;
             /** Citizen Dob */
             citizen_dob?: string | null;
+            /** Can Id */
+            can_id?: string | null;
             /** Phone Masked */
             phone_masked: string;
             /**
@@ -334,6 +336,8 @@ export interface components {
             citizen_name: string;
             /** Citizen Dob */
             citizen_dob?: string | null;
+            /** Can Id */
+            can_id?: string | null;
             /** Phone Masked */
             phone_masked: string;
             /**
@@ -385,6 +389,36 @@ export interface components {
             /** Declared Type */
             declared_type?: string | null;
         };
+        /** CitizenIn */
+        CitizenIn: {
+            /** Name */
+            name: string;
+            /** Dob */
+            dob?: string | null;
+            /** Phone */
+            phone: string;
+            /** Address Line */
+            address_line?: string | null;
+            /** Pin Code */
+            pin_code?: string | null;
+        };
+        /** CitizenOut */
+        CitizenOut: {
+            /** Can */
+            can: string;
+            /** Name */
+            name: string;
+            /** Dob */
+            dob?: string | null;
+            /** Phone Masked */
+            phone_masked: string;
+            /** Address Line */
+            address_line?: string | null;
+            /** Pin Code */
+            pin_code?: string | null;
+            /** Created At */
+            created_at: string;
+        };
         /** ConsistencyResult */
         ConsistencyResult: {
             /**
@@ -408,9 +442,9 @@ export interface components {
         /** CreateApplicationIn */
         CreateApplicationIn: {
             /** Citizen Name */
-            citizen_name: string;
+            citizen_name?: string | null;
             /** Phone */
-            phone: string;
+            phone?: string | null;
             /**
              * Service
              * @enum {string}
@@ -420,6 +454,8 @@ export interface components {
             office_id: string;
             /** Citizen Dob */
             citizen_dob?: string | null;
+            /** Can */
+            can?: string | null;
         };
         /** DecisionOut */
         DecisionOut: {

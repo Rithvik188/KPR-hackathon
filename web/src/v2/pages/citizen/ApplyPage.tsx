@@ -1,29 +1,32 @@
 // Apply flow, scoped to the service chosen on the Schemes page. Document upload never appears before this
-// point: step 1 collects the citizen's details and centre, step 2 uploads exactly this service's required
-// documents (Aadhaar front+back + one ID proof + the service's supporting document), step 3 submits.
+// point: step 1 finds or creates the citizen's CAN (contract v1.5) and picks the centre, step 2 uploads exactly
+// this service's required documents (Aadhaar front+back + one ID proof + the service's supporting document),
+// step 3 submits. The same page serves e-Sevai operators applying on a citizen's behalf at the counter
+// (/operator/apply/...): the centre is then the operator's own and nothing is added to this device's Track list.
 import { CheckCircle2, CircleCheck, ExternalLink, FileWarning, Send } from 'lucide-react'
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { createApplication, getOffices, uploadDocument } from '@/api/client'
-import type { ApplicationSummary, ConsistencyResult, DeclarableType, Office, Service, UploadResult } from '@/api/types'
+import type { ApplicationSummary, Citizen, ConsistencyResult, DeclarableType, Office, Service, UploadResult } from '@/api/types'
 import { ConsistencyCard } from '@/components/ConsistencyCard'
 import { ResultBody } from '@/components/ResultCard'
 import { DocStatusBadge } from '@/components/StatusBadge'
 import { UploadBox } from '@/components/UploadBox'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useLang } from '@/i18n'
+import { isoDateToDisplay } from '@/lib/format'
 import { supportingTypeFor } from '@/lib/services'
 import { cn } from '@/lib/utils'
 import { Breadcrumbs } from '@/v2/components/Breadcrumbs'
+import { CanStep } from '@/v2/components/CanStep'
 import { useAuth } from '@/v2/auth'
 import { OPEN_SERVICES, SCHEMES } from '@/v2/data/schemes'
 import { rememberApplication } from '@/v2/data/tracked'
+import { usePortalBase } from '@/v2/portalBase'
 
 const SERVICE_SLOTS = ['aadhaar_front', 'aadhaar_back', 'id_proof', 'supporting'] as const
 type SlotName = (typeof SERVICE_SLOTS)[number]
@@ -117,9 +120,13 @@ function ApplySlot({
 export function ApplyPage() {
   const { service } = useParams<{ service: string }>()
   const { t, lang } = useLang()
-  const { profile } = useAuth()
+  const { profile, rememberCan } = useAuth()
+  const base = usePortalBase()
+  const citizenProfile = profile?.kind === 'citizen' ? profile : null
+  const operator = profile?.kind === 'operator' ? profile : null
   const [offices, setOffices] = useState<Office[]>([])
-  const [officeId, setOfficeId] = useState('')
+  const [officeId, setOfficeId] = useState(operator?.officeId ?? '')
+  const [citizen, setCitizen] = useState<Citizen | null>(null)
   const [application, setApplication] = useState<ApplicationSummary | null>(null)
   const [consistency, setConsistency] = useState<ConsistencyResult | null>(null)
   const [accepted, setAccepted] = useState<Set<SlotName>>(new Set())
@@ -134,23 +141,26 @@ export function ApplyPage() {
     getOffices().then(setOffices).catch(() => {})
   }, [])
 
+  // A citizen's CAN is remembered on their profile so the next application skips the lookup.
+  const onCitizen = useCallback(
+    (c: Citizen | null) => {
+      setCitizen(c)
+      if (c && profile?.kind === 'citizen') rememberCan(c.can)
+    },
+    [profile?.kind, rememberCan],
+  )
+
   if (!service || !OPEN_SERVICES.has(service as Service) || !scheme) {
-    return <Navigate to="/portal/services" replace />
+    return <Navigate to={`${base}/services`} replace />
   }
 
   async function start(e: FormEvent) {
     e.preventDefault()
-    if (profile?.kind !== 'citizen' || !officeId) return
+    if (!citizen || !officeId) return
     setBusy(true)
     try {
-      const app = await createApplication({
-        citizen_name: profile.name,
-        phone: profile.phone,
-        service: service as Service,
-        office_id: officeId,
-        citizen_dob: profile.dob,
-      })
-      setApplication(app)
+      // v1.5: name, DOB and phone come from the CAN, so the certificate prints exactly what the CAN holds.
+      setApplication(await createApplication({ can: citizen.can, service: service as Service, office_id: officeId }))
     } catch (err) {
       toast.error(t('common.error'), { description: err instanceof Error ? err.message : String(err) })
     } finally {
@@ -171,12 +181,14 @@ export function ApplyPage() {
 
   async function submit() {
     if (!application) return
-    rememberApplication(application.id)
+    // Track lists applications made from this device; an operator's counter applications belong to the citizen.
+    if (!operator) rememberApplication(application.id)
     setSubmitted(true)
   }
 
   const allAccepted = slots.every((s) => accepted.has(s))
   const name = lang === 'ta' ? scheme.nameTa : scheme.nameEn
+  const officeName = offices.find((o) => o.id === officeId)?.name ?? operator?.officeName ?? ''
 
   if (submitted && application) {
     return (
@@ -186,15 +198,32 @@ export function ApplyPage() {
         </span>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('v2.apply.submitted')}</h1>
-          <p className="mt-1 text-muted-foreground">{t('v2.apply.submittedDesc', { id: application.id })}</p>
+          <p className="mt-1 text-muted-foreground">
+            {operator
+              ? t('v2.apply.operatorSubmittedDesc', { id: application.id, name: application.citizen_name })
+              : t('v2.apply.submittedDesc', { id: application.id })}
+          </p>
+          {application.can_id && (
+            <p className="mt-2 font-mono text-sm text-muted-foreground">
+              {t('v2.can.label')}: {application.can_id}
+            </p>
+          )}
         </div>
         <div className="flex flex-col justify-center gap-2 sm:flex-row">
-          <Button asChild size="lg">
-            <Link to={`/portal/track/${application.id}`}>{t('v2.apply.viewTracking')}</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link to="/portal/services">{t('v2.apply.backToServices')}</Link>
-          </Button>
+          {operator ? (
+            <Button asChild size="lg">
+              <Link to={`${base}/services`}>{t('v2.apply.newApplication')}</Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild size="lg">
+                <Link to={`/portal/track/${application.id}`}>{t('v2.apply.viewTracking')}</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link to="/portal/services">{t('v2.apply.backToServices')}</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     )
@@ -202,44 +231,56 @@ export function ApplyPage() {
 
   return (
     <div className="space-y-5">
-      <Breadcrumbs items={[{ label: t('v2.services.title'), to: '/portal/services' }, { label: name }]} />
+      <Breadcrumbs items={[{ label: t('v2.services.title'), to: `${base}/services` }, { label: name }]} />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('v2.apply.title', { service: name })}</h1>
-        <p className="text-muted-foreground">{t('v2.apply.subtitle')}</p>
+        <p className="text-muted-foreground">{t(operator ? 'v2.apply.operatorSubtitle' : 'v2.apply.subtitle')}</p>
       </div>
 
       {!application ? (
-        <Card className="mx-auto max-w-md">
-          <CardHeader>
-            <CardTitle className="text-base">{t('v2.apply.step1')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={start} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>{t('v2.login.name')}</Label>
-                <Input value={profile?.kind === 'citizen' ? profile.name : ''} disabled />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="apply-office">{t('v2.apply.centre')}</Label>
-                <Select value={officeId} onValueChange={setOfficeId}>
-                  <SelectTrigger id="apply-office" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {offices.map((o) => (
-                      <SelectItem key={o.id} value={o.id}>
-                        {o.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" size="lg" disabled={busy || !officeId} className="w-full">
-                {t('v2.apply.start')}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <CanStep
+            mode={operator ? 'operator' : 'citizen'}
+            defaults={
+              citizenProfile
+                ? { name: citizenProfile.name, phone: citizenProfile.phone, dob: citizenProfile.dob }
+                : { name: '', phone: '', dob: null }
+            }
+            knownCan={citizenProfile?.can}
+            citizen={citizen}
+            onChange={onCitizen}
+          />
+          {citizen && (
+            <Card className="mx-auto w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="text-base">{t(operator ? 'v2.apply.centreFixed' : 'v2.apply.centre')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={start} className="space-y-4">
+                  {operator ? (
+                    <p className="rounded-md bg-muted px-3 py-2 text-sm font-medium">{officeName}</p>
+                  ) : (
+                    <Select value={officeId} onValueChange={setOfficeId}>
+                      <SelectTrigger id="apply-office" className="w-full" aria-label={t('v2.apply.centre')}>
+                        <SelectValue placeholder={t('v2.login.centrePlaceholder')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {offices.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <Button type="submit" size="lg" disabled={busy || !officeId} className="w-full">
+                    {t('v2.apply.start')}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       ) : (
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <section className="space-y-4" aria-label={t('v2.apply.step2')}>
@@ -249,6 +290,19 @@ export function ApplyPage() {
             ))}
           </section>
           <aside className="space-y-4 lg:sticky lg:top-24">
+            {application.can_id && (
+              <Card className="py-0">
+                <CardContent className="space-y-0.5 py-3 text-sm">
+                  <p className="font-mono font-medium">
+                    {t('v2.can.label')}: {application.can_id}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {application.citizen_name}
+                    {application.citizen_dob ? ` · ${isoDateToDisplay(application.citizen_dob)}` : ''}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             {consistency && <ConsistencyCard consistency={consistency} />}
             <Card>
               <CardContent className="space-y-3">

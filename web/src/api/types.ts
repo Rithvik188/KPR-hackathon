@@ -84,6 +84,8 @@ export interface ApplicationSummary {
   id: string
   citizen_name: string
   citizen_dob?: string | null
+  /** v1.5: the citizen's CAN when the application was created from one */
+  can_id?: string | null
   phone_masked: string
   service: Service
   office_id: string
@@ -234,12 +236,33 @@ export interface Health {
   version: string
 }
 
+/** v1.5: with `can`, name/DOB/phone come from the CAN profile and any typed values are ignored. */
 export interface CreateApplicationInput {
-  citizen_name: string
-  phone: string
+  citizen_name?: string | null
+  phone?: string | null
   service: Service
   office_id: string
   citizen_dob?: string | null
+  can?: string | null
+}
+
+/** v1.5 CAN profile: created once per mobile number, never edited. Its name/DOB are printed on the certificate. */
+export interface Citizen {
+  can: string
+  name: string
+  dob?: string | null
+  phone_masked: string
+  address_line?: string | null
+  pin_code?: string | null
+  created_at: string
+}
+
+export interface CitizenInput {
+  name: string
+  dob?: string | null
+  phone: string
+  address_line?: string | null
+  pin_code?: string | null
 }
 
 export interface OfficerActionInput {

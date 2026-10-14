@@ -67,7 +67,8 @@ export function TrackPage() {
                     <div>
                       <p className="font-medium">{scheme ? (lang === 'ta' ? scheme.nameTa : scheme.nameEn) : app.service}</p>
                       <p className="font-mono text-xs text-muted-foreground">
-                        {app.id} · {dateTime(app.created_at)}
+                        {app.id}
+                        {app.can_id ? ` · ${app.can_id}` : ''} · {dateTime(app.created_at)}
                       </p>
                     </div>
                   </div>

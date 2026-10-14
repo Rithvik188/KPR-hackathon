@@ -12,10 +12,11 @@ import { usePortalBase } from '@/v2/portalBase'
 
 /** Schemes directory: ~14 realistic TN schemes with required documents. Only the 4 SevaiCheck supports are
  * clickable into Apply; the rest are informational ("coming soon"). No document upload happens on this page.
- * In the operator portal it is reference only: operators don't apply, so the Apply buttons are hidden. */
+ * In the operator portal, Apply starts a counter application on a citizen's behalf (/operator/apply/...). */
 export function ServicesPage() {
   const { t, lang } = useLang()
-  const canApply = usePortalBase() === '/portal'
+  const base = usePortalBase()
+  const canApply = base === '/portal' || base === '/operator'
 
   return (
     <div className="space-y-5">
@@ -23,7 +24,7 @@ export function ServicesPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('v2.services.title')}</h1>
         <p className="text-muted-foreground">{t('v2.services.subtitle')}</p>
-        {!canApply && <p className="mt-1 text-sm text-muted-foreground">{t('v2.services.operatorNote')}</p>}
+        {base === '/operator' && <p className="mt-1 text-sm text-muted-foreground">{t('v2.services.operatorNote')}</p>}
       </div>
 
       {/* Table view (desktop) */}
@@ -67,7 +68,7 @@ export function ServicesPage() {
                   <TableCell className="text-right">
                     {canApply && scheme.service && (
                       <Button asChild size="sm">
-                        <Link to={`/portal/apply/${scheme.service}`}>
+                        <Link to={`${base}/apply/${scheme.service}`}>
                           {t('v2.services.apply')}
                           <ArrowRight aria-hidden />
                         </Link>
@@ -105,7 +106,7 @@ export function ServicesPage() {
               </p>
               {canApply && scheme.service && (
                 <Button asChild size="sm" className="w-full">
-                  <Link to={`/portal/apply/${scheme.service}`}>
+                  <Link to={`${base}/apply/${scheme.service}`}>
                     {t('v2.services.apply')}
                     <ArrowRight aria-hidden />
                   </Link>

@@ -11,6 +11,8 @@ export type CitizenProfile = {
   name: string
   phone: string
   dob: string | null
+  /** v1.5: set once the citizen's CAN has been found or created, so later applications reuse it */
+  can?: string | null
 }
 
 export type DepartmentProfile = {
@@ -79,6 +81,8 @@ function writeProfile(p: Profile | null) {
 interface AuthContextValue {
   profile: Profile | null
   loginCitizen: (profile: Omit<CitizenProfile, 'kind'>) => void
+  /** Remember the signed-in citizen's CAN (no-op for other profiles). */
+  rememberCan: (can: string) => void
   /** Returns false (and signs nobody in) if the staff ID doesn't parse. */
   loginDepartment: (input: { name: string; employeeId: string }) => boolean
   /** Returns false (and signs nobody in) if the office isn't an e-Sevai centre. */
@@ -100,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     profile,
     loginCitizen: (p) => setProfile({ kind: 'citizen', ...p }),
+    rememberCan: (can) => setProfile((p) => (p?.kind === 'citizen' ? { ...p, can } : p)),
     loginDepartment: ({ name, employeeId }) => {
       const id = employeeId.trim().toUpperCase()
       const role = roleFromStaffId(id)

@@ -55,12 +55,14 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* e-Sevai operators (govt and private): citizen-portal pages minus Track, plus Notices. */}
+        {/* e-Sevai operators (govt and private): citizen-portal pages minus Track, plus Notices; Apply is on a
+            citizen's behalf at the counter, from the citizen's CAN. */}
         <Route element={<RequireAuth kind="operator" loginPath="/operator-login" />}>
           <Route path="operator" element={<OperatorLayout />}>
             <Route index element={<OperatorHomePage />} />
             <Route path="notices" element={<NoticesPage />} />
             <Route path="services" element={<ServicesPage />} />
+            <Route path="apply/:service" element={<ApplyPage />} />
             <Route path="centres" element={<CentresPage />} />
             <Route path="news" element={<NewsPage />} />
             <Route path="report" element={<ReportPage />} />
