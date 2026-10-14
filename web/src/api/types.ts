@@ -1,6 +1,7 @@
 // Contract v1.2 shapes (contract/api.md §1–§2), hand-written until types.gen.ts lands at Sync 1.
 
-export type DocType = 'aadhaar_front' | 'aadhaar_back' | 'pan' | 'voter_id' | 'unknown'
+export type SupportingType = 'parent_community_certificate' | 'birth_certificate' | 'income_proof' | 'address_proof'
+export type DocType = 'aadhaar_front' | 'aadhaar_back' | 'pan' | 'voter_id' | SupportingType | 'unknown'
 export type DeclarableType = Exclude<DocType, 'unknown'>
 export type DocStatus = 'accepted' | 'fixable' | 'invalid'
 export type AppStatus = 'submitted' | 'needs_fix' | 'ready_for_officer' | 'approved' | 'rejected'
@@ -14,7 +15,8 @@ export type OfficeType = 'taluk_office' | 'esevai_centre'
 export type Service = 'community_certificate' | 'income_certificate' | 'nativity_certificate' | 'ration_card_update'
 export type IssueCategory = 'scanner_problem' | 'long_wait' | 'wrong_rejection' | 'other'
 export type ReporterRole = 'citizen' | 'operator' | 'officer'
-export type OfficerAction = 'approve' | 'reject' | 'request_fix'
+export type OfficerAction = 'approve' | 'reject' | 'request_fix' | 'forward'
+export type Stage = 'vao' | 'ri' | 'tahsildar'
 
 export interface Issue {
   code: string
@@ -56,6 +58,17 @@ export interface ConsistencyResult {
   names_compared: string[]
   dob_match: boolean | null
   issues: Issue[]
+  /** v1.4: operator-typed name/DOB compared with the documents (null when no form was passed) */
+  form_check?: Record<string, unknown> | null
+}
+
+/** Shape of ConsistencyResult.form_check (contract v1.4); use formCheckOf() to read it safely. */
+export interface FormCheck {
+  name_on_form: string
+  name_on_documents: string | null
+  name_tier: NameTier
+  dob_on_form: string | null
+  dob_match: boolean | null
 }
 
 export interface Office {
@@ -70,11 +83,16 @@ export interface Office {
 export interface ApplicationSummary {
   id: string
   citizen_name: string
+  citizen_dob?: string | null
   phone_masked: string
   service: Service
   office_id: string
   office_name: string
   status: AppStatus
+  /** v1.4: officer chain position; null unless ready_for_officer */
+  stage?: Stage | null
+  stage_due_at?: string | null
+  stage_sla_hours_left?: number | null
   created_at: string
   updated_at: string
   sla_due_at: string
@@ -221,10 +239,25 @@ export interface CreateApplicationInput {
   phone: string
   service: Service
   office_id: string
+  citizen_dob?: string | null
 }
 
 export interface OfficerActionInput {
   action: OfficerAction
   reason_code?: string | null
   note?: string | null
+  /** v1.4: acting officer role; must equal the application's current stage */
+  role?: Stage | null
+}
+
+export function formCheckOf(c: ConsistencyResult | null | undefined): FormCheck | null {
+  const f = c?.form_check
+  if (!f || typeof f.name_on_form !== 'string') return null
+  return {
+    name_on_form: f.name_on_form,
+    name_on_documents: typeof f.name_on_documents === 'string' ? f.name_on_documents : null,
+    name_tier: (f.name_tier as NameTier) ?? 'not_enough_data',
+    dob_on_form: typeof f.dob_on_form === 'string' ? f.dob_on_form : null,
+    dob_match: typeof f.dob_match === 'boolean' ? f.dob_match : null,
+  }
 }

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useLang } from '@/i18n'
+import { isoDateToDisplay } from '@/lib/format'
 
 const SERVICES: Service[] = ['community_certificate', 'income_certificate', 'nativity_certificate', 'ration_card_update']
 const OFFICE_KEY = 'sevaicheck.office'
@@ -45,6 +46,7 @@ export function OperatorBar({
   const [officeId, setOfficeId] = useState(readOffice)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [dob, setDob] = useState('')
   const [service, setService] = useState<Service>('community_certificate')
   const [busy, setBusy] = useState(false)
 
@@ -61,7 +63,7 @@ export function OperatorBar({
     e.preventDefault()
     setBusy(true)
     try {
-      onCreated(await createApplication({ citizen_name: name, phone, service, office_id: officeId }))
+      onCreated(await createApplication({ citizen_name: name, phone, service, office_id: officeId, citizen_dob: dob || null }))
     } catch (err) {
       toast.error(t('common.error'), { description: err instanceof Error ? err.message : String(err) })
     } finally {
@@ -78,6 +80,11 @@ export function OperatorBar({
             <span className="font-semibold">{application.citizen_name}</span>
           </div>
           <span className="text-sm text-muted-foreground tabular-nums">{application.phone_masked}</span>
+          {application.citizen_dob && (
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {t('counter.dob')}: {isoDateToDisplay(application.citizen_dob)}
+            </span>
+          )}
           <span className="text-sm text-muted-foreground">{t(`service.${application.service}`)}</span>
           <span className="text-sm text-muted-foreground">{application.office_name}</span>
           <Button variant="outline" size="sm" className="ml-auto" onClick={onReset}>
@@ -92,7 +99,7 @@ export function OperatorBar({
   return (
     <Card>
       <CardContent>
-        <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="office">{t('counter.office')}</Label>
             <Select
@@ -131,6 +138,12 @@ export function OperatorBar({
             />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="dob">{t('counter.dob')}</Label>
+            <Input id="dob" type="date" required value={dob} max={new Date().toISOString().slice(0, 10)}
+                   onChange={(e) => setDob(e.target.value)} aria-describedby="dob-hint" />
+            <p id="dob-hint" className="text-xs text-muted-foreground">{t('counter.dobHint')}</p>
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="service">{t('counter.service')}</Label>
             <Select value={service} onValueChange={(v) => setService(v as Service)}>
               <SelectTrigger id="service" className="w-full">
@@ -145,7 +158,7 @@ export function OperatorBar({
               </SelectContent>
             </Select>
           </div>
-          <div className="sm:col-span-2 xl:col-span-4">
+          <div className="sm:col-span-2 xl:col-span-3">
             <Button type="submit" size="lg" disabled={busy || !officeId}>
               {t('counter.create')}
             </Button>

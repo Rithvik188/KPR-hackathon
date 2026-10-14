@@ -15,6 +15,7 @@ import type {
   Office,
   OfficerActionInput,
   OperationsMetrics,
+  Stage,
   UploadResult,
   ValidationResult,
 } from './types'
@@ -117,6 +118,7 @@ export function createApplication(input: CreateApplicationInput): Promise<Applic
 export function listApplications(params: {
   status?: AppStatus
   office_id?: string
+  stage?: Stage
   limit?: number
   offset?: number
 } = {}): Promise<ApplicationList> {

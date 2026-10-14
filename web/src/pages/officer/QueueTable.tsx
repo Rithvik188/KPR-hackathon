@@ -1,10 +1,11 @@
 import type { ApplicationSummary } from '@/api/types'
 import { FlagChips } from '@/components/FlagChips'
-import { SlaChip } from '@/components/SlaChip'
+import { SlaChip, StageSlaChip } from '@/components/SlaChip'
 import { AppStatusBadge } from '@/components/StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useLang } from '@/i18n'
+import { stageName } from '@/lib/services'
 import { cn } from '@/lib/utils'
 
 export function QueueTable({
@@ -18,7 +19,7 @@ export function QueueTable({
   selectedId: string | null
   onSelect: (id: string) => void
 }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
 
   return (
     <Table>
@@ -52,7 +53,10 @@ export function QueueTable({
                 className={cn('cursor-pointer', selectedId === app.id && 'bg-accent/60 hover:bg-accent/60')}
               >
                 <TableCell>
-                  <AppStatusBadge status={app.status} />
+                  <div className="space-y-1">
+                    <AppStatusBadge status={app.status} />
+                    {app.stage && <p className="text-xs text-muted-foreground">{stageName(app.stage, lang)}</p>}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <p className="font-medium">{app.citizen_name}</p>
@@ -64,7 +68,10 @@ export function QueueTable({
                   <FlagChips codes={app.flag_codes} />
                 </TableCell>
                 <TableCell>
-                  <SlaChip hoursLeft={app.sla_hours_left} status={app.status} />
+                  <div className="space-y-1">
+                    <SlaChip hoursLeft={app.sla_hours_left} status={app.status} />
+                    {app.stage && <StageSlaChip hoursLeft={app.stage_sla_hours_left} />}
+                  </div>
                 </TableCell>
                 <TableCell className="hidden text-right tabular-nums sm:table-cell">{app.doc_count}/3</TableCell>
               </TableRow>

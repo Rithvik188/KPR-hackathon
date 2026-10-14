@@ -1,8 +1,9 @@
 import { ArrowLeftRight, CalendarCheck, CalendarX } from 'lucide-react'
 
-import type { ConsistencyResult, NameTier } from '@/api/types'
+import { formCheckOf, type ConsistencyResult, type NameTier } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { useLang } from '@/i18n'
+import { isoDateToDisplay } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const TIER_STYLE: Record<NameTier, string> = {
@@ -16,6 +17,7 @@ const TIER_STYLE: Record<NameTier, string> = {
 export function ConsistencyCard({ consistency, className }: { consistency: ConsistencyResult; className?: string }) {
   const { t } = useLang()
   const { name_tier, names_compared, dob_match, name_score } = consistency
+  const form = formCheckOf(consistency)
   const expanded = consistency.issues.find((i) => i.evidence?.initial_expanded)?.evidence.initial_expanded as
     | string
     | undefined
@@ -43,6 +45,28 @@ export function ConsistencyCard({ consistency, className }: { consistency: Consi
           )}
           {expanded && <span className="font-mono">{expanded}</span>}
           {name_score !== null && <span>score {Math.round(name_score)}</span>}
+        </div>
+      )}
+      {form && (
+        <div className="space-y-2 border-t pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium">{t('form.title')}</p>
+            <Badge className={cn('h-6 px-2.5 text-xs', TIER_STYLE[form.name_tier])}>{t(`tier.${form.name_tier}`)}</Badge>
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            <dt className="text-muted-foreground">{t('form.nameOnForm')}</dt>
+            <dd className="font-medium">{form.name_on_form}</dd>
+            <dt className="text-muted-foreground">{t('form.nameOnDocs')}</dt>
+            <dd className="font-medium">{form.name_on_documents ?? '—'}</dd>
+            {form.dob_on_form && (
+              <>
+                <dt className="text-muted-foreground">{t('form.dobOnForm')}</dt>
+                <dd className={cn('font-medium tabular-nums', form.dob_match === false && 'text-danger')}>
+                  {isoDateToDisplay(form.dob_on_form)}
+                </dd>
+              </>
+            )}
+          </dl>
         </div>
       )}
     </div>
