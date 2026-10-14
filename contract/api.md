@@ -1,8 +1,9 @@
 # SevaiCheck API Contract
 
-**Version: 1.1** (bump on every change; see the CLAUDE.md section on the contract change protocol)
+**Version: 1.2** (bump on every change; see the CLAUDE.md section on the contract change protocol)
 
 **Changelog**
+- 1.2: `Application.consistency_json` (optional, latest ConsistencyResult cached by ops).
 - 1.1: `Document.declared_type` + slot grouping by declared type; `AADHAAR_BACK_MISSING` timing rule; nullable quality fields; `name_score` and multi-document tier definitions; `ExtractedDoc` fields spelled out.
 
 ## Conventions
@@ -279,7 +280,7 @@ def delete_image(document_id: str) -> None: ...
 | Table | Columns |
 |---|---|
 | `Office` | id, name, type, taluk, lat, lng |
-| `Application` | id, citizen_name, phone_masked, service, office_id, status, created_at, updated_at, sla_due_at, resubmissions, decision_action, decision_reason, decision_note, decided_at, is_seed |
+| `Application` | id, citizen_name, phone_masked, service, office_id, status, created_at, updated_at, sla_due_at, resubmissions, decision_action, decision_reason, decision_note, decided_at, consistency_json, is_seed |
 | `Document` | id, application_id, doc_type, declared_type, status, issues_json, fields_json, extracted_json, aadhaar_hmac, phash, image_path, uploaded_at, is_seed |
 | `AppEvent` | id, application_id, at, event, actor, note |
 | `Alert` | id, rule, severity, office_id, title_en, detail_en, evidence_json, suggested_action_en, status, created_at, dedupe_key |

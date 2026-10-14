@@ -46,6 +46,7 @@ class Application(SQLModel, table=True):
     decision_reason: str | None = None
     decision_note: str | None = None
     decided_at: datetime | None = None
+    consistency_json: str | None = None  # latest ConsistencyResult, cached by ops (contract v1.2)
     is_seed: bool = Field(default=False, index=True)
 
 
