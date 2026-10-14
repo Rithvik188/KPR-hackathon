@@ -8,7 +8,7 @@ from app.core.models import AppEvent, Application, Document, Office, iso, utcnow
 from app.validation.duplicates import find_duplicates
 
 
-def test_insert_and_read_timestamps_and_duplicates():
+def test_insert_and_read_timestamps_and_duplicates(monkeypatch):
     create_db()
     with Session(engine) as s:
         s.merge(Office(id="off_m", name="m", type="taluk_office", taluk="m", lat=0, lng=0))
@@ -25,4 +25,8 @@ def test_insert_and_read_timestamps_and_duplicates():
         assert iso(app.created_at).endswith("Z")
         assert find_duplicates(s, "ab" * 32, None, "app_m2") == ["app_m1"]
         assert find_duplicates(s, "ab" * 32, None, "app_m1") == []
+        import app.validation.duplicates as dup
+        monkeypatch.setattr(dup, "get_thresholds", lambda: {"phash_max_distance": 4})
         assert find_duplicates(s, None, "ff00ff00ff00ff00", "app_x") == ["app_m1"]  # identical photo
+        monkeypatch.setattr(dup, "get_thresholds", lambda: {"phash_max_distance": -1})  # tuned: disabled
+        assert find_duplicates(s, None, "ff00ff00ff00ff00", "app_x") == []
