@@ -1,0 +1,12 @@
+[{"id": "al_01", "rule": "REJECT_SPIKE", "severity": "high", "office_id": "off_sulur_es2", "office_name": "e-Sevai Centre – Sulur 2",
+  "title_en": "FIXTURE: Blur rejections up 3.4× this week",
+  "detail_en": "FIXTURE: 38 of 104 documents rejected for BLUR in the last 7 days (36.5%) vs 11 of 102 (10.8%) the week before.",
+  "evidence": {"code": "BLUR", "rate_now": 0.365, "rate_prev": 0.108, "n_now": 104, "n_prev": 102},
+  "suggested_action_en": "Check the scanner or camera focus at this centre; brief operators on holding cards steady.",
+  "status": "open", "created_at": "2026-10-14T04:00:00Z"},
+ {"id": "al_02", "rule": "SLA_BREACH", "severity": "medium", "office_id": "off_pollachi_to", "office_name": "Taluk Office – Pollachi",
+  "title_en": "FIXTURE: 23 applications past 72-hour SLA",
+  "detail_en": "FIXTURE: 23 applications ready for officer review have exceeded the 72-hour SLA; oldest is 5.2 days.",
+  "evidence": {"breached": 23, "oldest_hours": 125},
+  "suggested_action_en": "Reassign reviewers or schedule a clearance session.",
+  "status": "open", "created_at": "2026-10-14T04:00:00Z"}]

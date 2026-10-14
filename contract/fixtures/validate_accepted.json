@@ -1,0 +1,8 @@
+{"document_id": null, "doc_type": "aadhaar_front", "declared_type": "aadhaar_front", "status": "accepted",
+ "issues": [{"code": "SKEW_CORRECTED", "severity": "info", "audience": "officer",
+   "msg_en": "Card was tilted; straightened automatically.", "msg_ta": "அட்டை சாய்வாக இருந்தது; தானாக நேராக்கப்பட்டது.",
+   "evidence": {"skew_deg": 7.4}}],
+ "quality": {"card_found": true, "blur_score": 312.5, "glare_fraction": 0.001, "brightness": 142.0, "skew_deg": 7.4, "card_width_px": 1240, "passed": true},
+ "fields": {"id_number_display": "XXXX XXXX 4321", "name": "R. KARTHIK", "dob": "1998-04-12", "gender": "M", "father_name": null},
+ "ocr": {"mean_confidence": 0.91, "id_number_confidence": 0.94},
+ "timings_ms": {"quality": 170, "ocr": 1420, "total": 1610}}

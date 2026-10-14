@@ -1,0 +1,9 @@
+{"document_id": null, "doc_type": "aadhaar_front", "declared_type": "aadhaar_front", "status": "invalid",
+ "issues": [{"code": "INVALID_CHECKSUM", "severity": "blocking", "audience": "citizen",
+   "msg_en": "The Aadhaar number on this card is not valid. Please check the original card.",
+   "msg_ta": "இந்த அட்டையில் உள்ள ஆதார் எண் சரியானதாக இல்லை. அசல் அட்டையைச் சரிபார்க்கவும்.",
+   "evidence": {"id_number_confidence": 0.96, "min_confidence_for_rules": 0.85}}],
+ "quality": {"card_found": true, "blur_score": 288.0, "glare_fraction": 0.0, "brightness": 139.0, "skew_deg": 1.2, "card_width_px": 1210, "passed": true},
+ "fields": {"id_number_display": "XXXX XXXX 9087", "name": "S. MEENA", "dob": "1990-11-03", "gender": "F", "father_name": null},
+ "ocr": {"mean_confidence": 0.93, "id_number_confidence": 0.96},
+ "timings_ms": {"quality": 165, "ocr": 1380, "total": 1560}}

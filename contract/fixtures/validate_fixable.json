@@ -1,0 +1,7 @@
+{"document_id": null, "doc_type": "unknown", "declared_type": "aadhaar_front", "status": "fixable",
+ "issues": [{"code": "BLUR", "severity": "blocking", "audience": "citizen",
+   "msg_en": "Image is blurry. Hold the camera steady and retake.",
+   "msg_ta": "படம் மங்கலாக உள்ளது. கேமராவை அசையாமல் பிடித்து மீண்டும் எடுக்கவும்.",
+   "evidence": {"blur_score": 41.2, "threshold": 110.0}}],
+ "quality": {"card_found": true, "blur_score": 41.2, "glare_fraction": 0.004, "brightness": 131.0, "skew_deg": 3.1, "card_width_px": 1180, "passed": false},
+ "fields": null, "ocr": null, "timings_ms": {"quality": 180, "ocr": 0, "total": 195}}
