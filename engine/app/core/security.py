@@ -35,3 +35,12 @@ def mask_phone(phone: str) -> str:
     if len(d) < 4:
         return "X" * len(d)
     return d[:2] + "X" * (len(d) - 4) + d[-2:]
+
+
+def phone_hmac(phone: str) -> str:
+    """Keyed HMAC of the last 10 digits of a phone number: the CAN lookup key (contract v1.5)."""
+    d = _digits(phone)[-10:]
+    if len(d) != 10:
+        raise ValueError("phone_hmac expects a 10-digit mobile number")
+    key = get_settings().aadhaar_hmac_secret.encode()
+    return hmac.new(key, b"phone:" + d.encode(), hashlib.sha256).hexdigest()

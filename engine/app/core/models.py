@@ -30,10 +30,23 @@ class Office(SQLModel, table=True):
     lng: float
 
 
+class Citizen(SQLModel, table=True):
+    """CAN profile (contract v1.5): created once, never edited. Its name/DOB are what the certificate prints."""
+    id: str = Field(primary_key=True)  # the CAN, e.g. CAN2026000123
+    name: str
+    dob: str | None = None  # ISO date
+    phone_hmac: str = Field(index=True, unique=True)  # lookup key; the raw phone number is never stored
+    phone_masked: str
+    address_line: str | None = None
+    pin_code: str | None = None
+    created_at: datetime = Field(default_factory=utcnow)
+
+
 class Application(SQLModel, table=True):
     id: str = Field(primary_key=True)
     citizen_name: str
-    citizen_dob: str | None = None  # ISO date typed by the operator (contract v1.4)
+    citizen_dob: str | None = None  # ISO date (contract v1.4); copied from the CAN when can_id is set
+    can_id: str | None = Field(default=None, index=True, foreign_key="citizen.id")  # contract v1.5
     phone_masked: str
     service: str
     office_id: str = Field(index=True, foreign_key="office.id")
