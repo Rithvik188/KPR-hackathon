@@ -29,6 +29,10 @@ CODE_TABLE: dict[str, tuple[str, str]] = {
     "NAME_LIKELY_MATCH": ("warning", "officer"),
     "NAME_MISMATCH": ("blocking", "citizen"),
     "DOB_MISMATCH": ("blocking", "citizen"),
+    "FORM_NAME_MISMATCH": ("blocking", "citizen"),
+    "FORM_NAME_VARIANT": ("warning", "officer"),
+    "FORM_DOB_MISMATCH": ("blocking", "citizen"),
+    "CONTENT_NOT_VERIFIED": ("info", "officer"),
 }
 
 QUALITY_CODES = ("CARD_NOT_FOUND", "CROPPED", "BLUR", "GLARE", "TOO_DARK", "TOO_BRIGHT", "LOW_RESOLUTION")

@@ -33,6 +33,7 @@ class Office(SQLModel, table=True):
 class Application(SQLModel, table=True):
     id: str = Field(primary_key=True)
     citizen_name: str
+    citizen_dob: str | None = None  # ISO date typed by the operator (contract v1.4)
     phone_masked: str
     service: str
     office_id: str = Field(index=True, foreign_key="office.id")
@@ -45,6 +46,8 @@ class Application(SQLModel, table=True):
     decision_reason: str | None = None
     decision_note: str | None = None
     decided_at: datetime | None = None
+    stage: str | None = Field(default=None, index=True)  # vao | ri | tahsildar (contract v1.4)
+    stage_entered_at: datetime | None = None
     consistency_json: str | None = None  # latest ConsistencyResult, cached by ops (contract v1.2)
     is_seed: bool = Field(default=False, index=True)
 
