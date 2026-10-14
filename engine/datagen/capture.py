@@ -105,6 +105,7 @@ def _card_quad(rng: random.Random, spec: CaptureSpec, w: float) -> np.ndarray:
                         np.float32)  # perspective: corner jitter up to 5%
     r = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]], np.float32)
     corners = corners @ r.T
+    corners -= (corners.min(0) + corners.max(0)) / 2  # centre the jittered, rotated quad on its bbox
     margin = 30
     span = corners.max(0) - corners.min(0)
     fit = min(1.0, (CANVAS_W - 2 * margin) / span[0], (CANVAS_H - 2 * margin) / span[1])

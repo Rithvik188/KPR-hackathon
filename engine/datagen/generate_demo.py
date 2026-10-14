@@ -1,6 +1,6 @@
 """Deterministic demo images for the live demo (demo/images/). All SPECIMEN, all synthetic.
 
-    python -m datagen.generate_demo [--seed 42]
+    python -m datagen.generate_demo [--seed 43] [--search 10]   (--search re-verifies with the real engine)
 
 The citizen in 02/03/05 is the same person: Aadhaar shows "R. KARTHIK", PAN shows "KARTHIK RAJENDRAN".
 09 is a different person with the same given name and initial (KARTHIK RAMESH) and a different DOB.
@@ -46,14 +46,48 @@ def build(seed: int) -> dict[str, bytes]:
     }
 
 
+# file prefix -> (declared_type, expected status, code that must be present)
+EXPECT = {"01": ("aadhaar_front", "fixable", "BLUR"), "02": ("aadhaar_front", "accepted", None),
+          "03": ("aadhaar_back", "accepted", None), "04": ("pan", "fixable", "GLARE"),
+          "05": ("pan", "accepted", None), "06": ("voter_id", "fixable", "CROPPED"),
+          "07": ("voter_id", "accepted", None), "08": ("aadhaar_front", "invalid", "INVALID_CHECKSUM"),
+          "09": ("pan", "accepted", None)}
+
+
+def verify(images: dict[str, bytes]) -> list[str]:
+    """Run the real engine on each demo image; return the failures."""
+    from app.validation.api import validate_image
+
+    fails = []
+    for name, data in images.items():
+        declared, status, code = EXPECT[name[:2]]
+        r = validate_image(data, declared).result
+        codes = [i.code for i in r.issues]
+        if r.status != status or (code and code not in codes):
+            fails.append(f"{name}: got {r.status} {codes}, want {status} {code or ''}")
+    return fails
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--seed", type=int, default=43)
+    ap.add_argument("--verify", action="store_true", help="check every image gives its intended result")
+    ap.add_argument("--search", type=int, default=0, help="try this many seeds until all checks pass")
     a = ap.parse_args()
+    seed, images = a.seed, build(a.seed)
+    if a.verify or a.search:
+        for seed in range(a.seed, a.seed + max(1, a.search)):
+            images = build(seed)
+            fails = verify(images)
+            print(f"seed {seed}: {'OK' if not fails else fails}")
+            if not fails:
+                break
+        else:
+            raise SystemExit("no seed passed all demo checks")
     DEMO_DIR.mkdir(parents=True, exist_ok=True)
-    for name, data in build(a.seed).items():
+    for name, data in images.items():
         (DEMO_DIR / name).write_bytes(data)
-        print("wrote", DEMO_DIR / name)
+    print(f"wrote {len(images)} demo images (seed {seed}) to {DEMO_DIR}")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@
  "glare_blob_frac": 0.015,
  "dark_max": 60,
  "bright_min": 205,
- "ocr_min_confidence_for_rules": 0.85,
+ "ocr_min_confidence_for_rules": 0.7,
  "classify_min_score": 2,
  "phash_max_distance": 6,
  "name_match_min": 92,
