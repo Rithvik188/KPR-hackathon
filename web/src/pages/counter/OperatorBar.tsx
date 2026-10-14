@@ -72,7 +72,7 @@ export function OperatorBar({
   if (application) {
     return (
       <Card className="py-4">
-        <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <CardContent className="flex-row flex-wrap items-center gap-x-6 gap-y-2">
           <div className="flex items-center gap-2">
             <UserRound className="size-5 text-primary" aria-hidden />
             <span className="font-semibold">{application.citizen_name}</span>

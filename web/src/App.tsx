@@ -1,10 +1,9 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 
 import { TopBar } from '@/components/TopBar'
-import { useLang } from '@/i18n'
-import { ComingSoon } from '@/pages/ComingSoon'
-import { CounterPage } from '@/pages/counter/CounterPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
+import { CounterPage } from '@/pages/counter/CounterPage'
+import { MetricsPage } from '@/pages/MetricsPage'
 import { OfficerPage } from '@/pages/officer/OfficerPage'
 import { ReportPage } from '@/pages/ReportPage'
 
@@ -20,7 +19,6 @@ function Layout() {
 }
 
 export default function App() {
-  const { t } = useLang()
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -28,7 +26,7 @@ export default function App() {
         <Route path="counter" element={<CounterPage />} />
         <Route path="officer" element={<OfficerPage />} />
         <Route path="admin" element={<AdminPage />} />
-        <Route path="metrics" element={<ComingSoon title={t('nav.metrics')} />} />
+        <Route path="metrics" element={<MetricsPage />} />
         <Route path="report" element={<ReportPage />} />
         <Route path="*" element={<Navigate to="/counter" replace />} />
       </Route>
