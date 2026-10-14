@@ -1,0 +1,23 @@
+# Python 3.11+ (tested on 3.13, Windows).
+# torch: the default PyPI wheel is CPU-only, which is enough (OCR falls back to CPU).
+# For an NVIDIA GPU, first install:  pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu118
+torch==2.7.1
+fastapi==0.143.1
+uvicorn[standard]==0.54.0
+sqlmodel==0.0.48
+pydantic==2.14.1
+pydantic-settings==2.16.0
+python-multipart==0.0.32
+opencv-python-headless==5.0.0.93
+numpy==2.5.2
+pillow==12.3.0
+easyocr==1.7.2
+rapidocr-onnxruntime==1.2.3
+onnxruntime==1.31.0
+rapidfuzz==3.14.6
+imagehash==4.3.2
+cryptography==50.0.2
+albumentations==2.0.8
+pytest==9.1.1
+httpx==0.28.1
+reportlab==5.0.1

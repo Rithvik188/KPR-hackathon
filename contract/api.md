@@ -216,7 +216,7 @@ This is produced by Person 2's `ops/metrics_ops.py`.
 
 | # | Method and path | Owner | Request | Response |
 |---|---|---|---|---|
-| 1 | `GET /api/health` | P1 | none | `{"status":"ok","ocr_engine":"easyocr","ocr_gpu":true,"version":"1.1"}` |
+| 1 | `GET /api/health` | P1 | none | `{"status":"ok","ocr_engine":"easyocr","ocr_gpu":true,"ocr_ready":true,"version":"1.1"}` (`ocr_ready` is false while the OCR model warms up after start) |
 | 2 | `POST /api/validate` | P1 | multipart `file`, optional form `declared_type` | `ValidationResult` (not persisted) |
 | 3 | `GET /api/metrics/detection` | P1 | none | `DetectionMetrics` (reads `engine/evaluation/results.json`, or the fixture if that file is missing) |
 | 4 | `GET /api/offices` | P2 | none | `Office[]` |
