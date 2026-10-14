@@ -9,7 +9,7 @@ import { useLang } from '@/i18n'
 import { dateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-const SEVERITY: Record<AlertSeverity, string> = {
+export const SEVERITY: Record<AlertSeverity, string> = {
   high: 'bg-danger-soft text-danger',
   medium: 'bg-warning-soft text-warning',
   low: 'bg-secondary text-muted-foreground',
@@ -83,7 +83,7 @@ const RULE_RANK: Record<AlertRule, number> = {
   BACKLOG_GROWTH: 4,
 }
 
-function compareAlerts(a: Alert, b: Alert): number {
+export function compareAlerts(a: Alert, b: Alert): number {
   return (
     Number(a.status !== 'open') - Number(b.status !== 'open') ||
     b.created_at.slice(0, 16).localeCompare(a.created_at.slice(0, 16)) ||

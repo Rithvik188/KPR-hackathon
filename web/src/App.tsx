@@ -16,6 +16,10 @@ import { DeptQueuePage } from '@/v2/pages/department/DeptQueuePage'
 import { DistrictPage } from '@/v2/pages/department/DistrictPage'
 import { DepartmentLoginPage } from '@/v2/pages/DepartmentLoginPage'
 import { LandingPage } from '@/v2/pages/LandingPage'
+import { NoticesPage } from '@/v2/pages/operator/NoticesPage'
+import { OperatorHomePage } from '@/v2/pages/operator/OperatorHomePage'
+import { OperatorLayout } from '@/v2/pages/operator/OperatorLayout'
+import { OperatorLoginPage } from '@/v2/pages/OperatorLoginPage'
 import { AuthProvider } from '@/v2/auth'
 import { RequireAuth } from '@/v2/components/RequireAuth'
 import { ScrollToTop } from '@/v2/scroll'
@@ -28,6 +32,7 @@ export default function App() {
         <Route index element={<LandingPage />} />
         <Route path="login" element={<CitizenLoginPage />} />
         <Route path="department-login" element={<DepartmentLoginPage />} />
+        <Route path="operator-login" element={<OperatorLoginPage />} />
 
         <Route element={<RequireAuth kind="citizen" loginPath="/login" />}>
           <Route path="portal" element={<CitizenLayout />}>
@@ -47,6 +52,18 @@ export default function App() {
             <Route index element={<DeptQueuePage />} />
             <Route path="district" element={<DistrictPage />} />
             <Route path="metrics" element={<DeptMetricsPage />} />
+          </Route>
+        </Route>
+
+        {/* e-Sevai operators (govt and private): citizen-portal pages minus Track, plus Notices. */}
+        <Route element={<RequireAuth kind="operator" loginPath="/operator-login" />}>
+          <Route path="operator" element={<OperatorLayout />}>
+            <Route index element={<OperatorHomePage />} />
+            <Route path="notices" element={<NoticesPage />} />
+            <Route path="services" element={<ServicesPage />} />
+            <Route path="centres" element={<CentresPage />} />
+            <Route path="news" element={<NewsPage />} />
+            <Route path="report" element={<ReportPage />} />
           </Route>
         </Route>
 

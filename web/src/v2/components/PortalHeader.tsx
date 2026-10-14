@@ -79,6 +79,8 @@ export function PortalHeader({
                 <span className="hidden items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1.5 sm:flex">
                   <UserRound className="size-4" aria-hidden />
                   {profile.name}
+                  {/* Department only: its 3-item nav has room; the operator's ID is on the operator home card */}
+                  {profile.kind === 'department' && <span className="font-mono text-xs text-white/70">{profile.employeeId}</span>}
                 </span>
                 <Button size="icon" variant="ghost" className="text-white hover:bg-white/15 hover:text-white" onClick={logout} aria-label={t('v2.logout')}>
                   <LogOut className="size-4" aria-hidden />
