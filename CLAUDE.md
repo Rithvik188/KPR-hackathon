@@ -20,7 +20,7 @@ Two people build this **simultaneously**. Read this file, `contract/api.md` and 
 | `engine/app/ops/` | Person 2 | Applications, documents, alerts, seed, notifications, issues, ops metrics, reports |
 | `engine/tests/ops/` | Person 2 | |
 | `web/` | Person 2 | Entire frontend |
-| `scripts/` | Person 1 | Person 2 asks for changes |
+| `scripts/` | Person 1 | Person 2 asks for changes. Scripts are Python (`.py`) so they run on Windows |
 | `demo/images/` | Person 1 | Curated demo images |
 | `demo/demo_script.md`, `slides/` | Person 2 | |
 | `README.md` | Both | Person 1 writes the "Engine" and "Evaluation" sections; Person 2 writes everything else |
@@ -29,9 +29,10 @@ Two people build this **simultaneously**. Read this file, `contract/api.md` and 
 
 ## 2. Tech stack (do not change without both agreeing)
 
-- **Backend:** Python 3.11, FastAPI, Uvicorn, SQLModel on SQLite, Pydantic v2
+- **Backend:** Python 3.11+ (we run 3.13 on Windows), FastAPI, Uvicorn, SQLModel on SQLite, Pydantic v2
 - **Image and OCR:** opencv-python-headless, numpy, Pillow, EasyOCR (English only)
-  - Fallback OCR: RapidOCR (ONNX), only if the EasyOCR benchmark is above 3 s per image
+  - EasyOCR uses the GPU when `torch.cuda.is_available()` (env `OCR_GPU=auto|0|1`), else CPU
+  - Fallback OCR: RapidOCR (ONNX, `OCR_ENGINE=rapidocr`), if CPU EasyOCR is above 3 s per image
 - **Matching and security:** rapidfuzz, imagehash, stdlib `hmac`, `cryptography` (Fernet)
 - **Testing:** pytest
 - **Data generation:** albumentations, Pillow
@@ -73,30 +74,32 @@ Two people build this **simultaneously**. Read this file, `contract/api.md` and 
 ## 5. Git rules
 
 - **Branches:** Person 1 works on `p1`, Person 2 on `p2`. `main` must always run.
-- **Commits:** Small and frequent, with prefixes `engine:`, `ops:`, `web:`, `datagen:`, `eval:`, `CONTRACT:` or `docs:`.
+- **Commits:** No AI co-author or attribution trailers. Small and frequent, with prefixes `engine:`, `ops:`, `web:`, `datagen:`, `eval:`, `CONTRACT:` or `docs:`.
 - **Merging:** Only at sync points, following `plans/INTEGRATION.md`. Person 1 merges first, then Person 2.
 - **Never commit:** `.env`, `engine/data/`, `engine/datagen/out/`, `node_modules/` or `web/dist/`.
 
 ## 6. Commands
 
-```bash
+Both laptops run **Windows**. Use PowerShell or Git Bash. The repo lives at `C:\dev\sevaicheck` (**not** inside OneDrive).
+
+```powershell
 # one-time
-cp .env.example .env            # then fill secrets (see INTEGRATION.md)
-cd engine && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-cd web && npm install
+copy .env.example .env                              # then fill secrets (see INTEGRATION.md)
+cd engine; python -m venv .venv; .venv\Scriptsctivate; pip install -r requirements.txt
+cd web; npm install
 
 # daily
-./scripts/dev.sh                                  # backend :8000 + frontend :5173
-python -m app.ops.seed --reset                    # (in engine/) reset DB + seed offices + 30 days of ops data
-python -m datagen.generate --split tune --n 300   # (in engine/)
+python scripts/dev.py                               # backend :8000 (--reload-dir app) + frontend :5173
+python -m app.ops.seed --reset                      # (in engine/) reset DB + seed offices + 30 days of ops data
+python -m datagen.generate --split tune --n 300     # (in engine/)
 python -m datagen.generate --split test --n 300
 python -m datagen.generate_sets --n 60
-python -m evaluation.tune                         # writes app/validation/thresholds.json from tune split
-python -m evaluation.run                          # writes evaluation/results.json from test split
-pytest                                            # (in engine/)
-python scripts/contract_check.py                  # verifies live API shapes match fixtures
-cd web && npm run gen:types                       # regenerates src/api/types.gen.ts from backend
-./scripts/serve_prod.sh                           # build web, serve everything on :8000
+python -m evaluation.tune                           # writes app/validation/thresholds.json from tune split
+python -m evaluation.run                            # writes evaluation/results.json from test split
+pytest                                              # (in engine/)
+python scripts/contract_check.py                    # verifies live API shapes match fixtures
+cd web; npm run gen:types                           # regenerates src/api/types.gen.ts from backend
+python scripts/serve_prod.py                        # build web, serve everything on :8000
 ```
 
 ## 7. Working style for Claude Code
@@ -106,4 +109,4 @@ cd web && npm run gen:types                       # regenerates src/api/types.ge
 - **Commit at the end of every plan step.**
 - **Write or update tests** for every rule in `engine/app/validation/rules.py` and `consistency.py`.
 - **If a step runs 50% over its time budget,** stop and tell the human what to cut. Do not silently expand scope.
-- **Prefer simple, readable code** over clever code. This is a 11-hour build that must be demoed live.
+- **Prefer simple, readable code** over clever code. This is a 9-hour build that must be demoed live. Sync points: 1:10, 3:30, 5:15, 6:00 (freeze), 7:15 (RC).
