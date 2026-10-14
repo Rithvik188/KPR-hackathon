@@ -27,7 +27,7 @@ def stage_fields(app: Application, ref) -> dict:
         due_dt = app.stage_entered_at + timedelta(hours=stage_sla_hours(app.stage))
         due = iso(due_dt)
         left = round((due_dt - ref).total_seconds() / 3600, 1)
-    return {"citizen_dob": app.citizen_dob, "stage": app.stage, "stage_due_at": due, "stage_sla_hours_left": left}
+    return {"citizen_dob": app.citizen_dob, "can_id": app.can_id, "stage": app.stage, "stage_due_at": due, "stage_sla_hours_left": left}
 
 
 def get_app(session: Session, app_id: str) -> Application:

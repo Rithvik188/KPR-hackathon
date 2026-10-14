@@ -3,12 +3,12 @@ import asyncio
 
 from fastapi import APIRouter
 
-from app.ops import alerts, issues, metrics_ops, notifications, offices
+from app.ops import alerts, citizens, issues, metrics_ops, notifications, offices
 from app.ops.routers import applications, documents
 
 router = APIRouter()
 for _r in (offices.router, applications.router, documents.router, notifications.router, alerts.router,
-           issues.router, metrics_ops.router):
+           issues.router, metrics_ops.router, citizens.router):
     router.include_router(_r)
 
 
