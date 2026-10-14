@@ -1,9 +1,8 @@
 # Handoff: login/hierarchy/Notices/CAN round
 
-**Status:** the UI half of this round is **done and verified** (session 2). What's still open is the CAN
-round, which needs ops endpoints first (see "Still open" below). Nothing here is merged to `main` yet: P1's #0011
-says the feature freeze (about 03:40) has passed, so this merges only if both humans agree and it passes the
-smoke test + a phone click-through.
+**Status:** feature-complete on `p2`. Auth/hierarchy/Notices (session 2) and the CAN UI + operator counter
+Apply (session 2, after P1's CAN backend) are **done and verified in fixture mode**. Nothing here is on `main`
+yet. P1's #0012 lifted the freeze, so it merges normally once it passes the merge gate ("Still open" item 1).
 
 ## What the human asked for (verbatim intent)
 
@@ -86,22 +85,65 @@ smoke test + a phone click-through.
 - **Not yet done:** a run against the live backend + `scripts/smoke_test.py` + a phone click-through. That is
   needed before this goes to `main`.
 
+## Done — CAN round (UI only, on top of P1's CAN backend, `main` at `2ee5e41`)
+
+P1 built the CAN ops endpoints by agreement (comms #0013/#0014). On our side:
+
+1. **API layer:**
+   - `types.ts` has `Citizen`, `CitizenInput`, `can_id` on ApplicationSummary, and `can` on
+     CreateApplicationInput.
+   - `client.ts` has `createOrFindCitizen()`, which returns `{citizen, created}` (201 vs 200), and `getCitizen()`,
+     both with fixture-mode answers. In fixture mode a phone ending `21` "already has" `CAN2026000123`.
+   - `types.gen.ts` mirrors P1's v1.5 schemas by hand, because no backend was run this session.
+     `types.check.ts` gains a `CitizenOut`/`Citizen` drift check. **Run `npm run gen:types` against the live
+     backend once**: it should produce the same schemas, plus the `/api/citizens` paths.
+2. **`CanStep.tsx`** (shared): the form is phone, name (as on Aadhaar), DOB, and optional address/PIN, then
+   **Find or create CAN**. It then shows a locked CAN card (CAN, name and DOB with lock icons, masked phone,
+   address) with a "New CAN created" or "Existing CAN found" badge. For an existing CAN whose name differs
+   from what was typed, it says the CAN's own name/DOB are used.
+3. **Citizen Apply** (`ApplyPage.tsx`):
+   - The CAN step comes first. Phone is the signed-in number (read-only), and name/DOB are prefilled from login.
+   - Then the centre, then `createApplication({can, service, office_id})`. No typed name/DOB is sent, so the
+     certificate prints exactly what the CAN holds.
+   - The CAN is remembered on the citizen profile (`auth.rememberCan`), so the next application shows the
+     card straight away.
+   - The CAN appears beside the uploads, on the submitted screen, in the Track list and on Track detail
+     ("certificate name … (locked)").
+4. **Operator counter Apply** (`/operator/apply/:service`, same `ApplyPage`):
+   - The Schemes page shows Apply buttons for operators.
+   - The CAN step starts empty, with an editable phone and **Use a different mobile number**.
+   - The centre is fixed to the operator's own office.
+   - Submitting doesn't add to this device's Track list, and the confirmation tells the operator to give the
+     citizen the application number.
+   - The operator home has an "Apply for a citizen" card.
+5. **Officer drawer** shows `CAN …` in the application header.
+6. **i18n:** `v2.can.*`, `v2.apply.operator*`/`newApplication`/`centreFixed`, `v2.home.applyForCitizen*`, and
+   `v2.track.detail.canLocked`, all in `en` + `ta`.
+
+### Verified (CAN round)
+
+- tsc clean, lint 0 errors, build green.
+- **37/37 Playwright checks in fixture mode:**
+  - **CAN form:** comes first, phone locked to the login, bad PIN blocked.
+  - **Existing CAN:** the card says found, warns that the typed name isn't used, saves the CAN to the profile,
+    and the CAN shows beside the uploads, on the submitted screen, in the Track list and on Track detail. The
+    next application reuses the CAN without the form.
+  - **Operator:** a new CAN is created with a normalised name, the centre is fixed, the operator can switch
+    number, submitting gives no Track link, and the device's Track list is unchanged.
+  - **Officer drawer** shows the CAN.
+  - **Other:** Tamil renders, no horizontal scroll at 390 px, no page errors.
+- The 45-check auth suite was rerun: 45/45. One check was updated on purpose, because operators now have Apply
+  buttons.
+
 ## Still open
 
-1. **CAN in the Apply flow — blocked on ops endpoints.** Contract v1.5 is on `main`. The UI step needs
-   `POST /api/citizens` and `GET /api/citizens/{can}`, `can` on `POST /api/applications`, and `can_id` on
-   ApplicationSummary/Detail. Until `can_id` is returned, contract_check reports 2 expected FAILs. The
-   ownership table in `CLAUDE.md` puts `engine/app/ops/` under Person 2, but this session's human said P2 does
-   frontend only. **The humans need to agree who builds these endpoints.** Once they exist, the UI work is:
-   - add `Citizen` + `getCitizen`/`createCitizen` to `web/src/api/types.ts` / `client.ts` (and fixture mode,
-     from `contract/fixtures/citizen.json`);
-   - insert a "create or find CAN" step at the start of `web/src/v2/pages/citizen/ApplyPage.tsx`;
-   - pass `can` on `createApplication`, and show the CAN (and that name/DOB are locked) on the track pages.
-2. **Ask the human first:** should operators also fill the Apply flow on a citizen's behalf at the counter? Real
-   e-Sevai works that way, but it wasn't requested, so the operator portal is reference-only for now.
-3. **Before merging to `main`**:
-   - run against the real backend: `python scripts/dev.py`, sign in as each of the 5 profiles, walk
-     VAO → forward → RI → forward → Tahsildar → approve, and check that Notices for Sulur 2 shows the
-     seeded rejection spike;
-   - run `scripts/smoke_test.py`, `scripts/contract_check.py` and `pytest tests/ops`;
+1. **Merge gate before `main`** (needs the real backend; not run in these cloud sessions):
+   - `python scripts/dev.py`, then sign in as each of the 5 profiles;
+   - walk VAO → forward → RI → forward → Tahsildar → approve;
+   - check that Notices for Sulur 2 shows the seeded rejection spike;
+   - apply with the demo citizen: the CAN gets created, then found on the second application;
+   - apply as an operator for a new phone number;
+   - run `npm run gen:types` and rebuild, then `scripts/smoke_test.py`, `scripts/contract_check.py` and
+     `pytest tests/ops`;
    - do a phone click-through.
+2. Then merge `p2` → `main` and send P1 a MERGED message (P1 re-verifies `main` after every merge).
