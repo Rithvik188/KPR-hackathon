@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     image_enc_key: str
     database_url: str = ""
     data_dir: Path = ENGINE_DIR / "data"
-    ocr_engine: str = "easyocr"  # easyocr | rapidocr
+    ocr_engine: str = "rapidocr"  # rapidocr | easyocr
     ocr_gpu: str = "auto"  # auto | 0 | 1
     ocr_warmup: bool = True
     serve_web: bool = False

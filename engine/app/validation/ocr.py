@@ -3,6 +3,7 @@ import logging
 import threading
 from dataclasses import dataclass
 
+import cv2
 import numpy as np
 
 from app.core.config import get_settings
@@ -87,9 +88,31 @@ def _raw_read(img: np.ndarray) -> list[OcrToken]:
         return [OcrToken(str(t), float(c), _bbox(b)) for b, t, c in (result or [])]
 
 
+def read_line(img_bgr: np.ndarray) -> tuple[str, float]:
+    """Recognise a single cropped text line (no detection). Used for the independent second read."""
+    get_reader()
+    with _infer_lock:
+        if _engine == "easyocr":
+            out = _reader.readtext(img_bgr, detail=1, paragraph=False)
+            if not out:
+                return "", 0.0
+            return " ".join(str(t) for _, t, _ in out), min(float(c) for _, _, c in out)
+        result, _ = _reader(dropout_red(img_bgr), use_det=False, use_cls=False, use_rec=True)
+    if not result:
+        return "", 0.0
+    return str(result[0][1]), float(result[0][2])
+
+
+def dropout_red(img_bgr: np.ndarray) -> np.ndarray:
+    """Use the red channel as grey: red/pink overprints (the SPECIMEN watermark, stamps) fade to white
+    while black text stays black ("drop-out colour", standard in forms OCR)."""
+    r = img_bgr[:, :, 2]
+    return cv2.merge([r, r, r])
+
+
 def read(img_bgr: np.ndarray) -> list[OcrToken]:
     """OCR tokens on a BGR image, top-to-bottom then left-to-right."""
     get_reader()
-    tokens = [t for t in _raw_read(img_bgr) if t.text.strip()]
+    tokens = [t for t in _raw_read(dropout_red(img_bgr)) if t.text.strip()]
     tokens.sort(key=lambda t: (round(t.cy / 12), t.bbox[0]))
     return tokens
