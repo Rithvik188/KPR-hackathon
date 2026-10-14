@@ -152,6 +152,8 @@ def sla_breach(facts: list[AppFacts], now: datetime, names: dict[str, str]) -> l
 
 def backlog_growth(facts: list[AppFacts], now: datetime, names: dict[str, str]) -> list[Draft]:
     cfg = rules()["backlog_growth"]
+    if not cfg.get("enabled", True):
+        return []
     days = cfg["days"]
     points = [now - timedelta(days=days - i) for i in range(days + 1)]  # oldest .. now
     series: dict[str, list[int]] = defaultdict(lambda: [0] * len(points))

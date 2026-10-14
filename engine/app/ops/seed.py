@@ -4,11 +4,15 @@ The data stands for officer-review outcomes *before* SevaiCheck: applications wh
 for problems a counter check could have caught. Four stories are planted in the data itself; the alert rules
 must find them on their own (nothing here writes an alert):
 
-  A  Sulur 2 e-Sevai scanner: BLUR on 35% of applications in the last 7 days, 10% before.
-  B  Pollachi taluk backlog: officer decisions 5x slower in the last 6 days, so ready applications breach SLA.
+  A  Sulur 2 e-Sevai scanner: BLUR on exactly 35% of applications in the last 7 days, 10% before (exact
+     proportions, not coin flips, and a busier centre, so the spike never dips under the alert's floor).
+  B  Pollachi taluk backlog: officer decisions 5x slower in the last 9 days, so ready applications breach SLA.
   C  Duplicate: one (fake) Aadhaar, as a keyed HMAC, in 3 applications at 3 centres within 10 days.
   D  User reports: 4 scanner complaints at Sulur 2 in the last 24 h (+ 2 at Podanur, so one live report there
      triggers a new alert in the demo) and 6 scattered reports over the month.
+
+Each (day, office) draws from its own random stream keyed by "days before today", so the data relative to
+now is the same whatever date or time the seed runs (only the edges of today and of 7 days ago move).
 
 Seeded rows have is_seed = true and no images. No full Aadhaar number is stored anywhere.
 """
@@ -31,7 +35,7 @@ from app.validation.messages import make_issue
 from app.validation.types import ConsistencyResult, doc_status
 
 IST = timezone(timedelta(hours=5, minutes=30))
-RNG_SEED = 16  # chosen so only the planted stories fire at any time of day (see tests/ops)
+RNG_SEED = 10  # only the planted stories fire at every time of day (scanned 8 times x 12 seeds; see tests/ops)
 DAYS = 35  # 5 warm-up days so the 30-day charts start in steady state (no ramp-up artefact)
 VOLUME = {"taluk_office": 10, "esevai_centre": 6}  # Poisson mean applications per day
 BASELINE = {"BLUR": 0.09, "GLARE": 0.06, "AADHAAR_BACK_MISSING": 0.05, "CROPPED": 0.04, "TOO_DARK": 0.03,
@@ -41,7 +45,7 @@ FIX_PROB = 0.7
 DECISION_MEDIAN_H, DECISION_SIGMA = 30.0, 0.6
 SERVICES = ("community_certificate", "income_certificate", "nativity_certificate", "ration_card_update")
 
-STORY_A = {"office": "off_sulur_es2", "days": 7, "blur_now": 0.35, "blur_before": 0.10}
+STORY_A = {"office": "off_sulur_es2", "days": 7, "blur_now": 0.35, "blur_before": 0.10, "volume": 9}
 STORY_B = {"office": "off_pollachi_to", "days": 9, "factor": 5.0}
 STORY_C = {"offices": ("off_gandhipuram_es", "off_podanur_es", "off_mtp_es"), "days_ago": (9, 5, 2)}
 
@@ -56,12 +60,18 @@ LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 class Gen:
     """Row builder. Rows are plain dicts for fast bulk inserts."""
 
-    def __init__(self, rng: np.random.Generator, now: datetime, offices: list[Office]):
-        self.rng, self.now, self.offices = rng, now, offices
+    def __init__(self, rng_seed: int, now: datetime, offices: list[Office]):
+        self.seed, self.now, self.offices = rng_seed, now, offices
+        self.rng = np.random.default_rng(rng_seed)
         self.apps: list[dict] = []
         self.docs: list[dict] = []
         self.events: list[dict] = []
         self._seq = 0
+        self._blur_seen = {"now": 0, "before": 0}  # story A: Sulur 2 applications seen per period
+
+    def use_stream(self, *key: int) -> None:
+        """Switch to the random stream for `key` (e.g. days-before-today, office index)."""
+        self.rng = np.random.default_rng([self.seed, *key])
 
     def new_id(self, prefix: str) -> str:
         """Sequential seeded ids ("app_s000042"). Random 8-hex ids would collide across ~30k rows, and the "s"
@@ -140,13 +150,21 @@ class Gen:
         self.events.append({"id": self.new_id("ev"), "application_id": app_id, "at": at, "event": event,
                             "actor": actor, "note": note})
 
+    def story_a_blur(self, created: datetime) -> bool:
+        """Exactly blur_now / blur_before of Sulur 2's applications in each period, spread evenly in time order."""
+        period = "now" if created >= self.now - timedelta(days=STORY_A["days"]) else "before"
+        p = STORY_A["blur_now"] if period == "now" else STORY_A["blur_before"]
+        i = self._blur_seen[period]
+        self._blur_seen[period] += 1
+        return int((i + 1) * p) > int(i * p)
+
     def draw_codes(self, office_id: str, created: datetime) -> list[str]:
         codes = []
         for code, p in BASELINE.items():
             if code == "BLUR" and office_id == STORY_A["office"]:
-                recent = created >= self.now - timedelta(days=STORY_A["days"])
-                p = STORY_A["blur_now"] if recent else STORY_A["blur_before"]
-            if self.chance(p):
+                if self.story_a_blur(created):
+                    codes.append(code)
+            elif self.chance(p):
                 codes.append(code)
         return codes
 
@@ -243,14 +261,17 @@ class Gen:
         today = self.now.astimezone(IST).date()
         for back in range(days, -1, -1):
             day = today - timedelta(days=back)
-            for office in self.offices:
-                for _ in range(int(self.rng.poisson(VOLUME[office.type]))):
+            for index, office in enumerate(self.offices):
+                self.use_stream(back, index)
+                volume = STORY_A["volume"] if office.id == STORY_A["office"] else VOLUME[office.type]
+                for _ in range(int(self.rng.poisson(volume))):
                     created = self.business_time(day)
                     if created < self.now:
                         self.application(office.id, created)
 
     def duplicate_story(self) -> str:
         """Story C: the same Aadhaar (as an HMAC of a fake number) in three clean applications."""
+        self.use_stream(10_000)
         fake_digits = "".join(("2345", "6789", "0124"))  # fake, assembled at runtime; only its HMAC is stored
         digest = aadhaar_hmac(fake_digits)
         today = self.now.astimezone(IST).date()
@@ -306,7 +327,7 @@ def seed(session: Session, now: datetime | None = None, rng_seed: int = RNG_SEED
     now = now or utc_now()
     ensure_offices(session)
     offices = list(session.exec(select(Office).order_by(Office.id)).all())
-    gen = Gen(np.random.default_rng(rng_seed), now, offices)
+    gen = Gen(rng_seed, now, offices)
     gen.history(days)
     gen.duplicate_story()
     reports = gen.reports()
