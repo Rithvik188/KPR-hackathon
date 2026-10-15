@@ -26,7 +26,9 @@ function savedOffice(): string {
   }
 }
 
-export function ReportPage() {
+/** `showRecent` lists recent reports for the centre. That list (GET /issues) is officer-only since v1.8, so the
+ * citizen and operator portals turn it off. */
+export function ReportPage({ showRecent = true }: { showRecent?: boolean } = {}) {
   const { t } = useLang()
   const [params] = useSearchParams()
   const [offices, setOffices] = useState<Office[]>([])
@@ -47,11 +49,11 @@ export function ReportPage() {
   }, [])
 
   const loadRecent = useCallback(() => {
-    if (!officeId) return
+    if (!showRecent || !officeId) return
     listIssueReports()
       .then((all) => setRecent(all.filter((r) => r.office_id === officeId).slice(0, 8)))
       .catch(() => setRecent([]))
-  }, [officeId])
+  }, [officeId, showRecent])
 
   useEffect(loadRecent, [loadRecent])
 
@@ -138,14 +140,16 @@ export function ReportPage() {
           </form>
         </CardContent>
       </Card>
-      <Card className="gap-3">
-        <CardHeader>
-          <CardTitle className="text-base">{t('report.recent')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ReportList reports={recent} offices={offices} />
-        </CardContent>
-      </Card>
+      {showRecent && (
+        <Card className="gap-3">
+          <CardHeader>
+            <CardTitle className="text-base">{t('report.recent')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReportList reports={recent} offices={offices} />
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

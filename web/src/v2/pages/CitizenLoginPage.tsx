@@ -1,60 +1,90 @@
-import { MessageSquareText, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
+import { LoaderCircle, MessageSquareText, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { requestOtp } from '@/api/client'
+import type { OtpSent } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useLang } from '@/i18n'
-import { useAuth } from '@/v2/auth'
+import { type I18nKey, useLang } from '@/i18n'
+import { signInErrorKey, useAuth } from '@/v2/auth'
 import { LoginShell } from '@/v2/components/LoginShell'
 
 const MOBILE = /^[6-9]\d{9}$/
+const DEMO_CITIZEN = { name: 'R. Karthik', phone: '9876543221', dob: '1998-04-12' }
 
-function newOtp(): string {
-  return String(100000 + Math.floor(Math.random() * 900000))
-}
-
-/** Mock citizen sign-in with a mock OTP step. The "OTP" is generated and shown right here in the page: no SMS is
- * sent and no real credentials are collected. The demo button skips the whole thing for the live demo. */
+/** Citizen sign-in with an OTP checked by the server (contract v1.8). The prototype has no SMS gateway, so the
+ * server returns the code and this page shows it, labelled as a demo. The demo button goes through the same two
+ * calls with a demo number. */
 export function CitizenLoginPage() {
   const { t } = useLang()
-  const { loginCitizen } = useAuth()
+  const { signInCitizen } = useAuth()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [dob, setDob] = useState('')
   const [phoneError, setPhoneError] = useState(false)
-  const [otp, setOtp] = useState<string | null>(null) // the code "sent"; null until Send OTP
-  const [otpInput, setOtpInput] = useState('')
+  const [sent, setSent] = useState<OtpSent | null>(null) // null until Send OTP succeeds
+  const [otp, setOtp] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<I18nKey | null>(null)
 
   const digits = phone.replace(/\D/g, '').slice(-10)
-  const otpOk = otp !== null && otpInput === otp
 
-  function enter(values: { name: string; phone: string; dob: string | null }) {
-    loginCitizen(values)
-    navigate('/portal')
-  }
-
-  function sendOtp() {
-    if (!MOBILE.test(digits)) {
+  async function sendOtp(to = digits): Promise<OtpSent | null> {
+    if (!MOBILE.test(to)) {
       setPhoneError(true)
-      return
+      return null
     }
     setPhoneError(false)
-    setOtp(newOtp())
-    setOtpInput('')
+    setError(null)
+    setBusy(true)
+    try {
+      const res = await requestOtp(to)
+      setSent(res)
+      setOtp('')
+      return res
+    } catch (err) {
+      setError(signInErrorKey(err))
+      return null
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function verify(citizen: { name: string; phone: string; dob: string | null }, code: string) {
+    setError(null)
+    setBusy(true)
+    try {
+      await signInCitizen(citizen, code)
+      navigate('/portal')
+    } catch (err) {
+      setError(signInErrorKey(err))
+      setBusy(false)
+    }
   }
 
   function changePhone() {
-    setOtp(null)
-    setOtpInput('')
+    setSent(null)
+    setOtp('')
+    setError(null)
   }
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (otp === null) sendOtp()
-    else if (otpOk) enter({ name: name.trim(), phone: digits, dob: dob || null })
+    if (busy) return
+    if (sent === null) void sendOtp()
+    else if (otp.length === 6) void verify({ name: name.trim(), phone: digits, dob: dob || null }, otp)
+  }
+
+  async function signInDemo() {
+    setName(DEMO_CITIZEN.name)
+    setPhone(DEMO_CITIZEN.phone)
+    setDob(DEMO_CITIZEN.dob)
+    const res = await sendOtp(DEMO_CITIZEN.phone)
+    // With no demo code (a real SMS setup) the OTP step stays open for the code to be typed in.
+    if (res?.demo_otp) await verify(DEMO_CITIZEN, res.demo_otp)
   }
 
   return (
@@ -72,7 +102,7 @@ export function CitizenLoginPage() {
             inputMode="tel"
             autoComplete="tel"
             value={phone}
-            readOnly={otp !== null}
+            readOnly={sent !== null}
             onChange={(e) => {
               setPhone(e.target.value)
               setPhoneError(false)
@@ -92,15 +122,17 @@ export function CitizenLoginPage() {
           <Input id="login-dob" type="date" value={dob} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setDob(e.target.value)} />
         </div>
 
-        {otp === null ? (
-          <Button type="submit" size="lg" className="w-full" disabled={name.trim() === '' || phone.trim() === ''}>
-            <MessageSquareText aria-hidden />
+        {sent === null ? (
+          <Button type="submit" size="lg" className="w-full" disabled={busy || name.trim() === '' || phone.trim() === ''}>
+            {busy ? <LoaderCircle className="animate-spin" aria-hidden /> : <MessageSquareText aria-hidden />}
             {t('v2.login.sendOtp')}
           </Button>
         ) : (
           <>
             <div className="rounded-md border border-dashed bg-accent/60 px-3 py-2 text-sm" role="status">
-              {t('v2.login.otpDemo', { code: otp })}
+              {sent.demo_otp
+                ? t('v2.login.otpDemo', { code: sent.demo_otp, to: sent.sent_to })
+                : t('v2.login.otpSent', { to: sent.sent_to })}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="login-otp">{t('v2.login.otp')}</Label>
@@ -109,40 +141,36 @@ export function CitizenLoginPage() {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 className="font-mono tracking-[0.4em]"
-                value={otpInput}
-                onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                aria-invalid={otpInput.length === 6 && !otpOk}
-                aria-describedby={otpInput.length === 6 && !otpOk ? 'login-otp-error' : undefined}
+                value={otp}
+                onChange={(e) => {
+                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
+                  setError(null)
+                }}
+                aria-invalid={error === 'v2.login.otpWrong'}
                 autoFocus
               />
-              {otpInput.length === 6 && !otpOk && (
-                <p id="login-otp-error" className="text-xs text-danger">
-                  {t('v2.login.otpWrong')}
-                </p>
-              )}
               <div className="flex gap-3 text-xs">
-                <button type="button" className="text-primary hover:underline" onClick={sendOtp}>
+                <button type="button" className="text-primary hover:underline" onClick={() => void sendOtp()} disabled={busy}>
                   {t('v2.login.otpResend')}
                 </button>
-                <button type="button" className="text-primary hover:underline" onClick={changePhone}>
+                <button type="button" className="text-primary hover:underline" onClick={changePhone} disabled={busy}>
                   {t('v2.login.changePhone')}
                 </button>
               </div>
             </div>
-            <Button type="submit" size="lg" className="w-full" disabled={!otpOk}>
-              <ShieldCheck aria-hidden />
-              {t('v2.login.submit')}
+            <Button type="submit" size="lg" className="w-full" disabled={busy || otp.length !== 6 || name.trim() === ''}>
+              {busy ? <LoaderCircle className="animate-spin" aria-hidden /> : <ShieldCheck aria-hidden />}
+              {busy ? t('v2.login.signingIn') : t('v2.login.submit')}
             </Button>
           </>
         )}
+        {error && (
+          <p role="alert" className="rounded-md bg-danger-soft px-3 py-2 text-sm text-danger">
+            {t(error)}
+          </p>
+        )}
       </form>
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        className="w-full"
-        onClick={() => enter({ name: 'R. Karthik', phone: '9876543221', dob: '1998-04-12' })}
-      >
+      <Button type="button" variant="outline" size="lg" className="w-full" disabled={busy} onClick={() => void signInDemo()}>
         <Sparkles aria-hidden />
         {t('v2.login.demo')}
       </Button>

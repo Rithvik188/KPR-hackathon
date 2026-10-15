@@ -1,8 +1,13 @@
-// Mock authentication only. No real credentials, Aadhaar numbers, OTPs or payment details are ever sent
-// anywhere or stored beyond this browser's localStorage — everything here is a demo login.
+// Sign-in state for the three portals. Since contract v1.8 the server authenticates: staff sign in with ID and
+// password, citizens with an OTP, and the server's signed token (src/api/session.ts) is sent on every API call.
+// The role and centre shown here are copied from the server's answer, never chosen or typed in the browser.
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 
-import type { Office, Stage } from '@/api/types'
+import { ApiError, getOffices, loginStaff, verifyOtp } from '@/api/client'
+import { clearSession, getSession, onSessionExpired, setSession } from '@/api/session'
+import type { Office, Session, Stage } from '@/api/types'
+import { type I18nKey, useLang } from '@/i18n'
 
 export type CentreType = 'govt' | 'private'
 
@@ -36,7 +41,7 @@ export type Profile = CitizenProfile | DepartmentProfile | OperatorProfile
 const STAFF_ID = /^(VAO|RI|TAH)-[A-Z]{3,}-\d{3}$/
 const PREFIX_ROLE: Record<string, Stage> = { VAO: 'vao', RI: 'ri', TAH: 'tahsildar' }
 
-/** The staff ID alone decides a department officer's role (e.g. VAO-SULUR-014 → vao). There is no role picker. */
+/** A hint only, for the sign-in form ("Signing in as VAO"). The role that counts comes from the server. */
 export function roleFromStaffId(staffId: string): Stage | null {
   const m = STAFF_ID.exec(staffId.trim().toUpperCase())
   return m ? PREFIX_ROLE[m[1]] : null
@@ -51,19 +56,21 @@ export function centreTypeOf(office: Pick<Office, 'type'>): CentreType | null {
 
 const KEY = 'sevaicheck.v2.profile'
 
-/** A stored profile must still satisfy the sign-in rules: a department role has to match its staff ID, so an
- * edited localStorage entry (or one from the old free role picker) can't grant a higher stage. */
-function isConsistent(p: Profile): boolean {
-  if (p.kind === 'department') return roleFromStaffId(p.employeeId ?? '') === p.role
-  if (p.kind === 'operator') return Boolean(p.officeId && p.employeeId)
-  return true
+/** A stored profile is only used together with a live session that agrees with it, so editing storage can't
+ * grant a different role or centre (and the server would refuse anyway). */
+function matchesSession(p: Profile, s: Session | null): boolean {
+  if (!s) return false
+  if (p.kind === 'citizen') return s.role === 'citizen'
+  if (p.kind === 'department') return s.role === p.role
+  return s.role === 'operator' && s.office_id === p.officeId
 }
 
 function readProfile(): Profile | null {
   try {
-    const raw = localStorage.getItem(KEY)
+    localStorage.removeItem(KEY) // profiles were kept in localStorage before v1.8; sign-ins now end with the tab
+    const raw = sessionStorage.getItem(KEY)
     const p = raw ? (JSON.parse(raw) as Profile) : null
-    return p && isConsistent(p) ? p : null
+    return p && matchesSession(p, getSession()) ? p : null
   } catch {
     return null
   }
@@ -71,61 +78,92 @@ function readProfile(): Profile | null {
 
 function writeProfile(p: Profile | null) {
   try {
-    if (p) localStorage.setItem(KEY, JSON.stringify(p))
-    else localStorage.removeItem(KEY)
+    if (p) sessionStorage.setItem(KEY, JSON.stringify(p))
+    else sessionStorage.removeItem(KEY)
   } catch {
-    // storage unavailable: the session lasts for this tab only
+    // storage unavailable: the sign-in lasts until this page is reloaded
   }
 }
 
+const STAFF_ROLES: readonly string[] = ['vao', 'ri', 'tahsildar']
+
 interface AuthContextValue {
   profile: Profile | null
-  loginCitizen: (profile: Omit<CitizenProfile, 'kind'>) => void
+  /** Officer sign-in. Throws ApiError (BAD_CREDENTIALS, TOO_MANY_ATTEMPTS, WRONG_PORTAL, ...). */
+  signInDepartment: (staffId: string, password: string) => Promise<void>
+  /** e-Sevai operator sign-in; the centre is the one on the operator's account. */
+  signInOperator: (staffId: string, password: string) => Promise<void>
+  /** Citizen sign-in with the OTP from POST /auth/otp/request. */
+  signInCitizen: (citizen: { name: string; phone: string; dob: string | null }, otp: string) => Promise<void>
   /** Remember the signed-in citizen's CAN (no-op for other profiles). */
   rememberCan: (can: string) => void
-  /** Returns false (and signs nobody in) if the staff ID doesn't parse. */
-  loginDepartment: (input: { name: string; employeeId: string }) => boolean
-  /** Returns false (and signs nobody in) if the office isn't an e-Sevai centre. */
-  loginOperator: (input: { name: string; employeeId: string; office: Office }) => boolean
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { t } = useLang()
   const [profile, setProfile] = useState<Profile | null>(readProfile)
 
   useEffect(() => {
     writeProfile(profile)
   }, [profile])
 
-  // Hierarchy is structural, not a preference: the role / centre type is derived here from the staff ID or the
-  // office, callers can't pass one in, and nothing in the department/operator UI can change it afterwards.
+  // The server rejected the token (expired, or the server restarted with a new key): drop the profile, and
+  // <RequireAuth> sends the user to the login page of the portal they were in.
+  useEffect(
+    () =>
+      onSessionExpired(() => {
+        setProfile(null)
+        toast.info(t('v2.session.expired'), { id: 'session-expired' }) // several calls may fail at once
+      }),
+    [t],
+  )
+
+  function start(session: Session, next: Profile) {
+    setSession(session)
+    setProfile(next)
+  }
+
   const value: AuthContextValue = {
     profile,
-    loginCitizen: (p) => setProfile({ kind: 'citizen', ...p }),
-    rememberCan: (can) => setProfile((p) => (p?.kind === 'citizen' ? { ...p, can } : p)),
-    loginDepartment: ({ name, employeeId }) => {
-      const id = employeeId.trim().toUpperCase()
-      const role = roleFromStaffId(id)
-      if (!role) return false
-      setProfile({ kind: 'department', name, employeeId: id, role })
-      return true
+    signInDepartment: async (staffId, password) => {
+      const session = await loginStaff(staffId, password)
+      if (!STAFF_ROLES.includes(session.role)) throw new ApiError(403, 'WRONG_PORTAL', 'Not a department account')
+      start(session, {
+        kind: 'department',
+        name: session.name ?? staffId,
+        employeeId: staffId.trim().toUpperCase(),
+        role: session.role as Stage,
+      })
     },
-    loginOperator: ({ name, employeeId, office }) => {
-      const centreType = centreTypeOf(office)
-      if (!centreType) return false
-      setProfile({
+    signInOperator: async (staffId, password) => {
+      const session = await loginStaff(staffId, password)
+      if (session.role !== 'operator' || !session.office_id) {
+        throw new ApiError(403, 'WRONG_PORTAL', 'Not an e-Sevai operator account')
+      }
+      const office = (await getOffices()).find((o) => o.id === session.office_id)
+      const centreType = office ? centreTypeOf(office) : null
+      if (!office || !centreType) throw new ApiError(404, 'OFFICE_NOT_FOUND', 'Your e-Sevai centre was not found')
+      start(session, {
         kind: 'operator',
-        name,
-        employeeId: employeeId.trim().toUpperCase(),
+        name: session.name ?? staffId,
+        employeeId: staffId.trim().toUpperCase(),
         centreType,
         officeId: office.id,
         officeName: office.name,
       })
-      return true
     },
-    logout: () => setProfile(null),
+    signInCitizen: async ({ name, phone, dob }, otp) => {
+      const session = await verifyOtp(phone, otp)
+      start(session, { kind: 'citizen', name, phone, dob })
+    },
+    rememberCan: (can) => setProfile((p) => (p?.kind === 'citizen' ? { ...p, can } : p)),
+    logout: () => {
+      clearSession()
+      setProfile(null)
+    },
   }
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -134,4 +172,16 @@ export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
   return ctx
+}
+
+/** A bilingual message for a failed sign-in, by the server's error code. */
+export function signInErrorKey(err: unknown): I18nKey {
+  const code = err instanceof ApiError ? err.code : ''
+  if (code === 'BAD_CREDENTIALS') return 'v2.login.badCredentials'
+  if (code === 'BAD_OTP') return 'v2.login.otpWrong'
+  if (code === 'INVALID_PHONE') return 'v2.login.phoneInvalid'
+  if (code === 'TOO_MANY_ATTEMPTS' || code === 'TOO_MANY_REQUESTS') return 'v2.login.tooMany'
+  if (code === 'WRONG_PORTAL') return 'v2.login.wrongPortal'
+  if (code === 'NETWORK_ERROR') return 'v2.login.network'
+  return 'v2.login.failed'
 }

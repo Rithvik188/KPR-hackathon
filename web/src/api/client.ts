@@ -17,10 +17,13 @@ import type {
   Office,
   OfficerActionInput,
   OperationsMetrics,
+  OtpSent,
+  Session,
   Stage,
   UploadResult,
   ValidationResult,
 } from './types'
+import { expireSession, getSession } from './session'
 
 export const USE_FIXTURES = import.meta.env.VITE_USE_FIXTURES === 'true'
 
@@ -47,6 +50,22 @@ function withQuery(path: string, query?: Query): string {
   return qs ? `${path}?${qs}` : path
 }
 
+/** v1.8: every /api call carries the signed-in session's token. A 401 on anything but a sign-in call means the
+ * session is gone (expired or rejected), so it is dropped and the app sends the user back to their login page. */
+async function send(method: string, path: string, init: RequestInit = {}, query?: Query): Promise<Response> {
+  const headers = new Headers(init.headers)
+  const token = getSession()?.token
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  let res: Response
+  try {
+    res = await fetch(withQuery(`/api${path}`, query), { ...init, method, headers })
+  } catch {
+    throw new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the SevaiCheck server')
+  }
+  if (res.status === 401 && !path.startsWith('/auth/')) expireSession()
+  return res
+}
+
 /** Like `request`, but also returns the HTTP status (POST /citizens answers 201 created vs 200 found). */
 async function requestWithStatus<T>(
   method: string,
@@ -54,19 +73,14 @@ async function requestWithStatus<T>(
   body?: FormData | object,
   query?: Query,
 ): Promise<{ status: number; data: T }> {
-  const init: RequestInit = { method }
+  const init: RequestInit = {}
   if (body instanceof FormData) {
     init.body = body
   } else if (body !== undefined) {
     init.body = JSON.stringify(body)
     init.headers = { 'Content-Type': 'application/json' }
   }
-  let res: Response
-  try {
-    res = await fetch(withQuery(`/api${path}`, query), init)
-  } catch {
-    throw new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the SevaiCheck server')
-  }
+  const res = await send(method, path, init, query)
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const err = data?.error
@@ -93,6 +107,51 @@ async function fixture<T>(pick: (f: typeof import('./fixtures').fixtures) => unk
   const { fixtures } = await import('./fixtures')
   await new Promise((r) => setTimeout(r, 300))
   return structuredClone(pick(fixtures)) as T
+}
+
+// ---- auth (v1.8) --------------------------------------------------------------------------------
+
+// Fixture mode has no server, so the demo accounts are mirrored here with fixture offices (Gandhipuram stands in
+// for the private centre). Any non-empty password is accepted: fixture mode holds no secrets.
+const FIXTURE_STAFF: Record<string, Omit<Session, 'token' | 'expires_at'>> = {
+  'VAO-SULUR-014': { role: 'vao', name: 'S. Meena', office_id: null },
+  'RI-SULUR-007': { role: 'ri', name: 'K. Rajan', office_id: null },
+  'TAH-SULUR-001': { role: 'tahsildar', name: 'A. Selvi', office_id: null },
+  'ESV-SULUR2-031': { role: 'operator', name: 'P. Divya', office_id: 'off_sulur_es2' },
+  'ESV-PVT-112': { role: 'operator', name: 'M. Farooq', office_id: 'off_gandhipuram_es' },
+}
+const fixtureOtps = new Map<string, string>()
+const inHours = (h: number) => Math.floor(Date.now() / 1000) + h * 3600
+
+/** Staff (officers and e-Sevai operators) sign in with ID + password; the server returns the role and office. */
+export async function loginStaff(staffId: string, password: string): Promise<Session> {
+  const id = staffId.trim().toUpperCase()
+  if (USE_FIXTURES) {
+    const account = FIXTURE_STAFF[id]
+    await new Promise((r) => setTimeout(r, 300))
+    if (!account || !password) throw new ApiError(401, 'BAD_CREDENTIALS', 'Staff ID or password is incorrect')
+    return { ...account, token: 'fixture', expires_at: inHours(10) }
+  }
+  return request('POST', '/auth/staff', { staff_id: id, password })
+}
+
+export async function requestOtp(phone: string): Promise<OtpSent> {
+  if (USE_FIXTURES) {
+    const code = String(100000 + Math.floor(Math.random() * 900000))
+    fixtureOtps.set(phone, code)
+    return { sent_to: maskPhone(phone), expires_in_s: 300, demo_otp: code }
+  }
+  return request('POST', '/auth/otp/request', { phone })
+}
+
+export async function verifyOtp(phone: string, otp: string): Promise<Session> {
+  if (USE_FIXTURES) {
+    await new Promise((r) => setTimeout(r, 300))
+    if (fixtureOtps.get(phone) !== otp) throw new ApiError(401, 'BAD_OTP', 'The OTP is wrong or has expired')
+    fixtureOtps.delete(phone)
+    return { token: 'fixture', role: 'citizen', name: maskPhone(phone), office_id: null, expires_at: inHours(2) }
+  }
+  return request('POST', '/auth/otp/verify', { phone, otp })
 }
 
 // ---- endpoints ----------------------------------------------------------------------------------
@@ -195,8 +254,12 @@ export function uploadDocument(applicationId: string, file: File, declaredType: 
   return request('POST', `/applications/${encodeURIComponent(applicationId)}/documents`, form)
 }
 
-export function documentImageUrl(documentId: string): string {
-  return `/api/documents/${encodeURIComponent(documentId)}/image`
+/** v1.8: card images need the session token, which an <img src> can't send, so they are fetched as a blob and
+ * shown through an object URL (the caller revokes it). */
+export async function fetchDocumentImage(documentId: string): Promise<Blob> {
+  const res = await send('GET', `/documents/${encodeURIComponent(documentId)}/image`)
+  if (!res.ok) throw new ApiError(res.status, `HTTP_${res.status}`, res.statusText)
+  return res.blob()
 }
 
 export function actOnApplication(id: string, input: OfficerActionInput): Promise<ApplicationSummary> {
