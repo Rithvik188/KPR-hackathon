@@ -24,6 +24,7 @@ import type {
   ValidationResult,
 } from './types'
 import { expireSession, getSession } from './session'
+import { shrinkImage } from '@/lib/shrinkImage'
 
 export const USE_FIXTURES = import.meta.env.VITE_USE_FIXTURES === 'true'
 
@@ -163,10 +164,10 @@ export function getHealth(): Promise<Health> {
   return request('GET', '/health')
 }
 
-export function validateDocument(file: File, declaredType?: DeclarableType): Promise<ValidationResult> {
+export async function validateDocument(file: File, declaredType?: DeclarableType): Promise<ValidationResult> {
   if (USE_FIXTURES) return fixture((f) => ({ ...f.validate[validateFixture], declared_type: declaredType ?? null }))
   const form = new FormData()
-  form.append('file', file)
+  form.append('file', await shrinkImage(file))
   if (declaredType) form.append('declared_type', declaredType)
   return request('POST', '/validate', form)
 }
@@ -239,7 +240,7 @@ export function getApplication(id: string): Promise<ApplicationDetail> {
   return request('GET', `/applications/${encodeURIComponent(id)}`)
 }
 
-export function uploadDocument(applicationId: string, file: File, declaredType: DeclarableType): Promise<UploadResult> {
+export async function uploadDocument(applicationId: string, file: File, declaredType: DeclarableType): Promise<UploadResult> {
   if (USE_FIXTURES) {
     return fixture((f) => ({
       document_id: 'doc_fixture',
@@ -249,7 +250,7 @@ export function uploadDocument(applicationId: string, file: File, declaredType: 
     }))
   }
   const form = new FormData()
-  form.append('file', file)
+  form.append('file', await shrinkImage(file)) // phone photos are shrunk before upload (lib/shrinkImage.ts)
   form.append('declared_type', declaredType)
   return request('POST', `/applications/${encodeURIComponent(applicationId)}/documents`, form)
 }
