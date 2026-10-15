@@ -95,6 +95,55 @@ def _validate_supporting(image_bytes: bytes, declared_type: str, t0: float) -> V
     return ValidationOutcome(result=result, card_jpeg=_jpeg(page), phash=None, extracted=None)
 
 
+def _try_eaadhaar_page(image_bytes: bytes, declared_type: str, t0: float, t: dict) -> ValidationOutcome | None:
+    """Full e-Aadhaar letter path (see aadhaar_page.py). Returns None when the photo is not an e-Aadhaar letter."""
+    from app.validation.aadhaar_page import best_number, read_page
+    from app.validation.quality import decode
+    from app.validation.supporting import page_quality
+
+    q, q_issues, _page = page_quality(image_bytes)
+    q_issues = [i for i in q_issues if i.code != "GLARE"]  # white paper, not a glossy card
+    q["passed"] = not any(i.severity == "blocking" for i in q_issues)
+    t_quality = _ms(t0)
+    decoded = decode(image_bytes)
+    if decoded is None:
+        return None
+    img, _ = decoded
+    t1 = time.perf_counter()
+    r = read_page(img)
+    if not r.is_letter:
+        return None
+    issues = list(q_issues)
+    if any(i.severity == "blocking" for i in issues):  # a letter, but too blurry/dark to read: retake
+        result = ValidationResult(doc_type=declared_type, declared_type=declared_type, status=doc_status(issues),
+                                  issues=issues, quality=Quality(**q),
+                                  timings_ms=Timings(quality=t_quality, ocr=_ms(t1), total=_ms(t0)))
+        return ValidationOutcome(result=result)
+    number, conf, second = best_number(r)
+    rr = apply_rules("aadhaar_front", number, conf, 0, t["ocr_min_confidence_for_rules"],
+                     lambda: second if second else (None, None))
+    issues.append(make_issue("EAADHAAR_PAGE", {"printings_of_number": len([n for n, _ in r.numbers if n == number]),
+                                                "markers": r.markers}))
+    issues.extend(rr.issues)
+    display = mask_aadhaar(rr.number) if rr.number else None
+    if declared_type == "aadhaar_back":
+        fields = {"id_number_display": display, "pin_code": r.pin_code}
+    else:
+        fields = {"id_number_display": display, "name": r.name, "dob": r.dob, "gender": r.gender, "father_name": None}
+    hmac_hex = aadhaar_hmac(rr.number) if rr.trusted and rr.number else None
+    extracted = ExtractedDoc(doc_type=declared_type, declared_type=declared_type, name=r.name, dob=r.dob,
+                             gender=r.gender, id_last4=rr.number[-4:] if rr.number else None)
+    result = ValidationResult(doc_type=declared_type, declared_type=declared_type, status=doc_status(issues),
+                              issues=issues, quality=Quality(**q), fields=fields,
+                              ocr=OcrInfo(mean_confidence=round(r.mean_conf, 3),
+                                          id_number_confidence=None if conf is None else round(conf, 3)),
+                              timings_ms=Timings(quality=t_quality, ocr=_ms(t1), total=_ms(t0)))
+    jpeg = _jpeg(cv2.resize(img, None, fx=min(1.0, 1600 / max(img.shape[:2])), fy=min(1.0, 1600 / max(img.shape[:2]))))
+    log.info("validate e-aadhaar page status=%s codes=%s ms=%s", result.status, [i.code for i in issues],
+             result.timings_ms.total)
+    return ValidationOutcome(result=result, aadhaar_hmac=hmac_hex, phash=None, card_jpeg=jpeg, extracted=extracted)
+
+
 def _ocr_and_classify(card: np.ndarray, declared_type: str | None, min_score: float):
     tokens = ocr.read(card)
     detected, scores = classify(tokens, declared_type, min_score)
@@ -122,6 +171,20 @@ def validate_image(image_bytes: bytes, declared_type: str | None = None) -> Vali
 
     t = get_thresholds()
     rep = assess(image_bytes)
+    out = _validate_card(image_bytes, declared_type, t0, t, rep)
+    codes = {i.code for i in out.result.issues if i.severity == "blocking"}
+    if declared_type in AADHAAR_TYPES and codes and codes <= PAGE_RETRY_CODES:
+        page = _try_eaadhaar_page(image_bytes, declared_type, t0, t)
+        if page is not None:  # a full e-Aadhaar letter, not a bad card photo
+            return page
+    return out
+
+
+# Card-path failures that may simply mean "this is a whole e-Aadhaar letter, not a card".
+PAGE_RETRY_CODES = {"CARD_NOT_FOUND", "CROPPED", "TOO_BRIGHT", "WRONG_DOC_TYPE", "UNKNOWN_DOC_TYPE", "UNREADABLE"}
+
+
+def _validate_card(image_bytes: bytes, declared_type: str | None, t0: float, t: dict, rep) -> ValidationOutcome:
     t_quality = _ms(t0)
     quality = Quality(**rep.quality)
     issues = list(rep.issues)

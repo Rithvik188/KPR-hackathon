@@ -33,6 +33,7 @@ CODE_TABLE: dict[str, tuple[str, str]] = {
     "FORM_NAME_VARIANT": ("warning", "officer"),
     "FORM_DOB_MISMATCH": ("blocking", "citizen"),
     "CONTENT_NOT_VERIFIED": ("info", "officer"),
+    "EAADHAAR_PAGE": ("info", "officer"),
 }
 
 QUALITY_CODES = ("CARD_NOT_FOUND", "CROPPED", "BLUR", "GLARE", "TOO_DARK", "TOO_BRIGHT", "LOW_RESOLUTION")

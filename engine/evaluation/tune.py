@@ -31,8 +31,8 @@ SEARCH = [
     (("dark_max",), "TOO_DARK", [list(range(40, 125, 5))]),
     (("bright_min",), "TOO_BRIGHT", [list(range(180, 240, 5))]),
     (("min_card_width_px",), "LOW_RESOLUTION", [list(range(500, 825, 25))]),
-    (("crop_border_px", "crop_aspect_tol"), "CROPPED",
-     [list(range(2, 16)), list(np.round(np.arange(0.08, 0.32, 0.02), 2))]),
+    (("crop_border_px", "crop_aspect_tol", "crop_edge_aspect_tol"), "CROPPED",
+     [list(range(2, 16)), list(np.round(np.arange(0.08, 0.32, 0.02), 2)), [0.0, 0.03, 0.05, 0.08, 0.10]]),
 ]
 
 

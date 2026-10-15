@@ -66,6 +66,8 @@ def apply_rules(doc_type: str, number: str | None, confidence: float | None, sub
         return RuleResult([make_issue("UNREADABLE", {"id_number_confidence": round(conf, 3),
                                                      "threshold": min_conf})], number)
     failure = check_number(doc_type, number)
+    if doc_type in ("aadhaar_front", "aadhaar_back") and len(number) != 12:
+        return RuleResult([make_issue("UNREADABLE", {"reason": "number_length", "digits_read": len(number)})], number)
     if failure is None:
         issues = [make_issue("OCR_AUTOCORRECTED", {"substitutions": subs})] if subs else []
         return RuleResult(issues, number, True)

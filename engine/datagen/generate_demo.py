@@ -14,6 +14,7 @@ from datagen.capture import CaptureSpec, capture
 from datagen.identities import Person
 from datagen.numbers import make_aadhaar, make_epic, make_invalid_aadhaar, make_pan
 from datagen.pages import render_page
+from datagen.eaadhaar import render_eaadhaar
 from datagen.templates import render
 
 DEMO_DIR = Path(__file__).resolve().parents[2] / "demo" / "images"
@@ -55,6 +56,9 @@ def build(seed: int) -> dict[str, bytes]:
         "12_income_proof.jpg": page("income_proof", karthik),
         "13_birth_certificate_blurry.jpg": page("birth_certificate", karthik, blur_sigma=4.5),
         "14_address_proof.jpg": page("address_proof", karthik, rotation_deg=1.5),
+        # Full e-Aadhaar letter (contract v1.6): the A4 PDF most citizens actually bring
+        "15_eaadhaar_letter.jpg": capture(render_eaadhaar(karthik, aadhaar, "".join(str(rng.randint(0, 9)) for _ in range(16)), rng),
+                                          CaptureSpec(card_width=820, rotation_deg=2.0, noise_sigma=3.0, jpeg_quality=90), "B", rng),
     }
 
 
@@ -68,7 +72,8 @@ EXPECT = {"01": ("aadhaar_front", "fixable", "BLUR"), "02": ("aadhaar_front", "a
           "11": ("birth_certificate", "accepted", "CONTENT_NOT_VERIFIED"),
           "12": ("income_proof", "accepted", "CONTENT_NOT_VERIFIED"),
           "13": ("birth_certificate", "fixable", "BLUR"),
-          "14": ("address_proof", "accepted", "CONTENT_NOT_VERIFIED")}
+          "14": ("address_proof", "accepted", "CONTENT_NOT_VERIFIED"),
+          "15": ("aadhaar_front", "accepted", "EAADHAAR_PAGE")}
 
 
 def verify(images: dict[str, bytes]) -> list[str]:
