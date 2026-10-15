@@ -99,5 +99,9 @@
   "CONTENT_NOT_VERIFIED": {
     "en": "Image quality is good. The officer will verify the contents of this document.",
     "ta": "படத்தின் தரம் நன்றாக உள்ளது. இந்த ஆவணத்தின் உள்ளடக்கத்தை அலுவலர் சரிபார்ப்பார்."
+  },
+  "EAADHAAR_PAGE": {
+    "en": "Full e-Aadhaar letter detected. It covers both the front and the back of the Aadhaar.",
+    "ta": "முழு இ-ஆதார் கடிதம் கண்டறியப்பட்டது. இது ஆதாரின் முன்பக்கம் மற்றும் பின்பக்கம் இரண்டையும் உள்ளடக்கியது."
   }
 }
