@@ -2,7 +2,7 @@ import { ImageOff, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-import { documentImageUrl, getApplication } from '@/api/client'
+import { fetchDocumentImage, getApplication } from '@/api/client'
 import type { ApplicationDetail, ApplicationDocument, DocType, Stage } from '@/api/types'
 import { ConsistencyCard } from '@/components/ConsistencyCard'
 import { FlagChips } from '@/components/FlagChips'
@@ -18,10 +18,36 @@ import { dateTime } from '@/lib/format'
 import { issueLabel } from '@/lib/issues'
 import { OfficerActions } from '@/pages/officer/OfficerActions'
 
+/** The card image needs the session token (v1.8), so it is fetched as a blob and shown via an object URL that is
+ * revoked when the drawer closes or the document changes. */
+function useDocumentImage(documentId: string, available: boolean): { src: string | null; failed: boolean } {
+  const [state, setState] = useState<{ id: string; src: string | null; failed: boolean } | null>(null)
+  useEffect(() => {
+    if (!available) return
+    let url: string | null = null
+    let cancelled = false
+    fetchDocumentImage(documentId)
+      .then((blob) => {
+        if (cancelled) return
+        url = URL.createObjectURL(blob)
+        setState({ id: documentId, src: url, failed: false })
+      })
+      .catch(() => {
+        if (!cancelled) setState({ id: documentId, src: null, failed: true })
+      })
+    return () => {
+      cancelled = true
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [documentId, available])
+  return state?.id === documentId ? state : { src: null, failed: false }
+}
+
 function CardImage({ doc, decided }: { doc: ApplicationDocument; decided: boolean }) {
   const { t } = useLang()
+  const { src, failed: fetchFailed } = useDocumentImage(doc.id, doc.image_available)
   const [failed, setFailed] = useState(false)
-  if (!doc.image_available || failed) {
+  if (!doc.image_available || failed || fetchFailed) {
     return (
       <div className="flex aspect-[1000/630] w-full flex-col items-center justify-center gap-1 rounded-md border border-dashed bg-muted p-2 text-center text-xs text-muted-foreground">
         {decided ? <ShieldCheck className="size-5 text-success" aria-hidden /> : <ImageOff className="size-5" aria-hidden />}
@@ -29,9 +55,10 @@ function CardImage({ doc, decided }: { doc: ApplicationDocument; decided: boolea
       </div>
     )
   }
+  if (!src) return <Skeleton className="aspect-[1000/630] w-full rounded-md" />
   return (
     <img
-      src={documentImageUrl(doc.id)}
+      src={src}
       alt={doc.doc_type}
       onError={() => setFailed(true)}
       className="aspect-[1000/630] w-full rounded-md border bg-muted object-contain"

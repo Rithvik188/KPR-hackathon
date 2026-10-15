@@ -270,6 +270,26 @@ export interface CitizenInput {
   pin_code?: string | null
 }
 
+/** v1.8: who the server says is signed in. The role and office come from here, never from the browser. */
+export type Role = 'citizen' | 'operator' | Stage
+
+/** v1.8 POST /auth/staff and /auth/otp/verify: a signed, expiring token for `Authorization: Bearer`. */
+export interface Session {
+  token: string
+  role: Role
+  name?: string | null
+  office_id?: string | null
+  /** Unix seconds */
+  expires_at: number
+}
+
+/** v1.8 POST /auth/otp/request. `demo_otp` is set only while there is no SMS gateway (DEMO_OTP_IN_RESPONSE=1). */
+export interface OtpSent {
+  sent_to: string
+  expires_in_s: number
+  demo_otp?: string | null
+}
+
 export interface OfficerActionInput {
   action: OfficerAction
   reason_code?: string | null
