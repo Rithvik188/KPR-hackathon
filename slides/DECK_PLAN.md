@@ -4,7 +4,7 @@
 `docs/screenshots/` on slides 8, 12 and 13). Updated for contract v1.8 after `main` `6d80b3c`: server-side sign-in
 and permissions (slides 9, 13, 15, 16), 134 tests incl. 20 security tests (11, 15, 18), and the real-layout result
 38/40 with 0 false invalid from `engine/evaluation/realistic.json` (17).
-**Deck:** Canva "SevaiCheck Final Presentation (Beige)" (`DAHYAkfPXlQ`), currently 11 slides.
+**Deck:** Canva "SevaiCheck Final Presentation (Beige)" (`DAHYAkfPXlQ`), 19 slides; the 11-slide original is kept as a backup copy.
 **Facts come only from:** `README.md` (e-Sevai research, with its sources), `docs/ENGINE.md` (engine, real-photo
 findings, limitations), `engine/evaluation/results.json` (held-out numbers), and the code itself (security controls).
 No fixture or invented numbers (CLAUDE.md rule 9).
