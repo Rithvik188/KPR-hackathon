@@ -1,6 +1,10 @@
 # SevaiCheck final deck: implementation plan
 
-**Status:** plan for review. Nothing in Canva changes until the human approves this plan.
+**Status:** built in Canva and saved (19 slides, speaker notes on every slide, app screenshots from
+`docs/screenshots/` on slides 8, 12 and 13). **Out of date since P1's contract v1.8 (server-side auth, P1→P2 #0022):**
+slide 16 still says the API does not check callers, slides 11 and 18 say 114 tests / contract v1.7 (now 131 / v1.8), and
+slide 17 lacks the real-layout result from `engine/evaluation/realistic.json` (P1→P2 #0021). Refresh after the auth
+frontend work lands.
 **Deck:** Canva "SevaiCheck Final Presentation (Beige)" (`DAHYAkfPXlQ`), currently 11 slides.
 **Facts come only from:** `README.md` (e-Sevai research, with its sources), `docs/ENGINE.md` (engine, real-photo
 findings, limitations), `engine/evaluation/results.json` (held-out numbers), and the code itself (security controls).
