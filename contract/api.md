@@ -1,8 +1,9 @@
 # SevaiCheck API Contract
 
-**Version: 1.7** (bump on every change; see the CLAUDE.md section on the contract change protocol)
+**Version: 1.8** (bump on every change; see the CLAUDE.md section on the contract change protocol)
 
 **Changelog**
+- 1.8: **server-side authentication and permissions** (docs/SECURITY.md). Every non-public route needs `Authorization: Bearer <token>` when `AUTH_REQUIRED=1` (the default). New public routes: `POST /api/auth/staff` `{"staff_id","password"}` → `{"token","role","name","office_id","expires_at"}`; `POST /api/auth/otp/request` `{"phone"}` → `{"sent_to","expires_in_s","demo_otp"}`; `POST /api/auth/otp/verify` `{"phone","otp"}` → same session shape with `role: "citizen"`; `GET /api/auth/me`. Errors: `401 NOT_SIGNED_IN | BAD_CREDENTIALS | BAD_OTP`, `403 FORBIDDEN`, `409 STAGE_MISMATCH`, `429 TOO_MANY_ATTEMPTS | TOO_MANY_REQUESTS`. Permission table: `engine/app/core/policy.py` (see docs/SECURITY.md). Roles: `citizen`, `operator`, `vao`, `ri`, `tahsildar`. CAN numbers are now random.
 - 1.7 (additive): made-up demo service `identity_verification` (`DEMO-01`, "Identity Verification Letter"): needs only the ID proofs (Aadhaar front + back + PAN or Voter ID), listed first in `services.json`. `DEMO-01` is deliberately not a real REV code.
 - 1.6 (additive): full **e-Aadhaar letter** support. An A4 e-Aadhaar page uploaded to either Aadhaar slot is validated as a page (number taken from its repeated printings, never the VID) and gets the info issue `EAADHAAR_PAGE`; `doc_type` = the declared slot. The same letter may be uploaded to both slots.
 - 1.5 (additive): CAN citizen profiles (`Citizen` table, `Application.can_id`, `POST /api/citizens`, `GET /api/citizens/{can}`); `OfficeType` adds `esevai_centre_private`.

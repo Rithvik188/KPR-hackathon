@@ -20,9 +20,15 @@ DEMO = ROOT / "demo" / "images"
 BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "http://127.0.0.1:8000"
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _auth import staff_headers  # noqa: E402
+
+AS: dict = {}  # current Authorization header (switched per role below)
+
+
 def call(method: str, path: str, body: bytes | None = None, ctype: str | None = None):
     req = urllib.request.Request(BASE + path, data=body, method=method,
-                                 headers={"Content-Type": ctype} if ctype else {})
+                                 headers={**AS, **({"Content-Type": ctype} if ctype else {})})
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
             raw = r.read()
@@ -51,8 +57,12 @@ def main() -> int:
     if st != 200 or not offices:
         print(f"FAIL  /api/offices -> {st}; ops endpoints not available yet")
         return 1
+    tokens = {sid: staff_headers(BASE, sid) for sid in
+              ("ESV-SULUR2-031", "VAO-SULUR-014", "RI-SULUR-007", "TAH-SULUR-001")}
+    AS.clear()
+    AS.update(tokens["ESV-SULUR2-031"])  # the e-Sevai operator at Sulur 2 creates and uploads
     payload = json.dumps({"citizen_name": "KARTHIK R", "citizen_dob": "1998-04-12", "phone": "9876543221",
-                          "service": "community_certificate", "office_id": offices[0]["id"]}).encode()
+                          "service": "community_certificate", "office_id": "off_sulur_es2"}).encode()
     st, app = call("POST", "/api/applications", payload, "application/json")
     expect("create application", st == 201, f"(HTTP {st})")
     if st != 201:
@@ -86,6 +96,8 @@ def main() -> int:
             expect("form check: typed DOB matches documents", fc.get("dob_match") is True, f"-> {fc}")
         else:
             print("SKIP  form check (server predates contract v1.4 form_check)")
+    AS.clear()
+    AS.update(tokens["TAH-SULUR-001"])  # officer view of the queue and the card image
     # Seeded data puts thousands of applications in the queue: page through this office's queue.
     found, offset = False, 0
     while not found:
@@ -105,15 +117,22 @@ def main() -> int:
     def patch(body: dict):
         return call("PATCH", f"/api/applications/{app_id}", json.dumps(body).encode(), "application/json")
 
+    def as_(sid: str) -> None:
+        AS.clear()
+        AS.update(tokens[sid])
+
     if last and last["application"].get("stage") == "vao":  # contract v1.4 officer chain
+        as_("VAO-SULUR-014")
         st, summ = patch({"action": "approve", "role": "vao"})
-        expect("VAO cannot approve (409)", st == 409, f"(HTTP {st})")
+        expect("VAO cannot approve (403/409)", st in (403, 409), f"(HTTP {st})")
         st, summ = patch({"action": "forward", "role": "vao"})
         expect("VAO forwards -> RI", st == 200 and summ.get("stage") == "ri", f"(HTTP {st})")
         st, summ = patch({"action": "forward", "role": "vao"})
-        expect("stale role rejected (409 STAGE_MISMATCH)", st == 409, f"(HTTP {st})")
+        expect("stale role rejected (409 STAGE_MISMATCH)", st in (403, 409), f"(HTTP {st})")
+        as_("RI-SULUR-007")
         st, summ = patch({"action": "forward", "role": "ri"})
         expect("RI forwards -> Tahsildar", st == 200 and summ.get("stage") == "tahsildar", f"(HTTP {st})")
+        as_("TAH-SULUR-001")
         st, _ = patch({"action": "approve", "role": "tahsildar"})
         expect("Tahsildar approves", st == 200, f"(HTTP {st})")
     else:

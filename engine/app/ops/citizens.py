@@ -10,7 +10,6 @@ from datetime import date
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.core.db import get_session
@@ -76,10 +75,14 @@ def normalise_phone(phone: str) -> str:
 
 
 def _next_can(session: Session) -> str:
+    """Random (not sequential) so CANs cannot be enumerated."""
+    import secrets
+
     prefix = f"CAN{utc_now().year}"
-    last = session.exec(select(func.max(Citizen.id)).where(Citizen.id.startswith(prefix))).one()
-    seq = int(last[len(prefix):]) + 1 if last else 1
-    return f"{prefix}{seq:06d}"
+    while True:
+        can = f"{prefix}{secrets.randbelow(900000) + 100000:06d}"
+        if session.get(Citizen, can) is None:
+            return can
 
 
 def get_citizen(session: Session, can: str) -> Citizen:

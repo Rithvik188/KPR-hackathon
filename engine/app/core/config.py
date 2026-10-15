@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     ocr_gpu: str = "auto"  # auto | 0 | 1
     ocr_warmup: bool = True
     serve_web: bool = False
+    # Security (docs/SECURITY.md). Secure by default: every non-public API route needs a signed session token.
+    auth_required: bool = True
+    staff_demo_password: str = ""  # demo staff accounts' password; share privately, never shown in the UI
+    demo_otp_in_response: bool = False  # prototype has no SMS gateway: return the OTP in the API response
+    expose_api_docs: bool = False  # /docs and /openapi.json (dev only)
 
     @field_validator("aadhaar_hmac_secret")
     @classmethod
@@ -38,6 +43,13 @@ class Settings(BaseSettings):
             Fernet(v.encode())
         except Exception as exc:  # noqa: BLE001
             raise ValueError("IMAGE_ENC_KEY is not a valid Fernet key (use Fernet.generate_key())") from exc
+        return v
+
+    @field_validator("staff_demo_password")
+    @classmethod
+    def _strong_password(cls, v: str) -> str:
+        if v and len(v) < 10:
+            raise ValueError("STAFF_DEMO_PASSWORD must be at least 10 characters")
         return v
 
     @field_validator("data_dir")
