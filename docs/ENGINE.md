@@ -113,6 +113,22 @@ printed **e-Aadhaar letter** (A4, bilingual Tamil + English, QR codes, 16-digit 
   printings (never the VID), the English name above `DOB` with Tamil lines skipped. The letter fills either Aadhaar slot.
   10/10 synthetic letters read correctly with 0 false invalids; real letters still need validation in a pilot.
 - A number read with the wrong length is now a retake, never `INVALID_FORMAT`.
+- **PAN in the real current design** (bilingual Hindi + English labels, PAN under "Permanent Account Number", QR code,
+  no father's name) and **e-PAN printouts** (card + back panel side by side). When a card outline holds the wrong
+  content (e.g. the back panel), the engine re-reads the whole photo; a cropped card still asks for a retake.
+
+**Realistic-layout check** (`python -m evaluation.realistic`, `engine/evaluation/realistic.json`): 40 synthetic
+SPECIMEN documents in the real current layouts, never used for tuning.
+
+| Document | Accepted with the correct number | DOB correct | Wrongly marked invalid |
+|---|---|---|---|
+| e-Aadhaar letter (front slot) | 9/10 | 9/9 | 0 |
+| e-Aadhaar letter (back slot) | 9/10 | n/a | 0 |
+| PAN card (real-style) | 10/10 | 10/10 | 0 |
+| e-PAN printout | 10/10 | 10/10 | 0 |
+
+A whole e-Aadhaar letter takes about 5–12 s on a laptop CPU, because it reads a full A4 page at high resolution.
+Cards take 1–2 s.
 
 ## Limitations (stated plainly)
 

@@ -1,0 +1,464 @@
+{
+ "note": "Synthetic SPECIMEN documents in the real current layouts; not used for tuning. Real-world accuracy still needs a pilot.",
+ "summary": {
+  "eaadhaar_front": {
+   "n": 10,
+   "accepted": 9,
+   "number_correct": 9,
+   "dob_correct": "9/9",
+   "false_invalid": 0,
+   "retake_codes": [
+    "SKEW_CORRECTED",
+    "WRONG_DOC_TYPE"
+   ],
+   "median_ms": 28932
+  },
+  "eaadhaar_back": {
+   "n": 10,
+   "accepted": 9,
+   "number_correct": 9,
+   "dob_correct": "n/a",
+   "false_invalid": 0,
+   "retake_codes": [
+    "BLUR"
+   ],
+   "median_ms": 45566
+  },
+  "pan_card": {
+   "n": 10,
+   "accepted": 10,
+   "number_correct": 10,
+   "dob_correct": "10/10",
+   "false_invalid": 0,
+   "retake_codes": [],
+   "median_ms": 4676
+  },
+  "epan_printout": {
+   "n": 10,
+   "accepted": 10,
+   "number_correct": 10,
+   "dob_correct": "10/10",
+   "false_invalid": 0,
+   "retake_codes": [],
+   "median_ms": 19184
+  }
+ },
+ "items": [
+  {
+   "file": "real_001_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 36952
+  },
+  {
+   "file": "real_002_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": null,
+   "ms": 46114
+  },
+  {
+   "file": "real_003_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 9013
+  },
+  {
+   "file": "real_004_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 4270
+  },
+  {
+   "file": "real_005_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 17812
+  },
+  {
+   "file": "real_006_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "fixable",
+   "codes": [
+    "BLUR"
+   ],
+   "number_ok": false,
+   "dob_ok": null,
+   "ms": 47242
+  },
+  {
+   "file": "real_007_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [
+    "SKEW_CORRECTED"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 4949
+  },
+  {
+   "file": "real_008_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 21026
+  },
+  {
+   "file": "real_009_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 17630
+  },
+  {
+   "file": "real_010_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": null,
+   "ms": 43641
+  },
+  {
+   "file": "real_011_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [
+    "SKEW_CORRECTED"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 10252
+  },
+  {
+   "file": "real_012_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 20391
+  },
+  {
+   "file": "real_013_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 28932
+  },
+  {
+   "file": "real_014_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": null,
+   "ms": 42946
+  },
+  {
+   "file": "real_015_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [
+    "SKEW_CORRECTED"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 4279
+  },
+  {
+   "file": "real_016_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 21091
+  },
+  {
+   "file": "real_017_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 30485
+  },
+  {
+   "file": "real_018_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": null,
+   "ms": 46885
+  },
+  {
+   "file": "real_019_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 4507
+  },
+  {
+   "file": "real_020_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 3850
+  },
+  {
+   "file": "real_021_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "fixable",
+   "codes": [
+    "SKEW_CORRECTED",
+    "WRONG_DOC_TYPE"
+   ],
+   "number_ok": false,
+   "dob_ok": null,
+   "ms": 15172
+  },
+  {
+   "file": "real_022_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": null,
+   "ms": 46377
+  },
+  {
+   "file": "real_023_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 4576
+  },
+  {
+   "file": "real_024_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 20058
+  },
+  {
+   "file": "real_025_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 15913
+  },
+  {
+   "file": "real_026_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": null,
+   "ms": 15354
+  },
+  {
+   "file": "real_027_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [
+    "SKEW_CORRECTED",
+    "OCR_AUTOCORRECTED"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 4676
+  },
+  {
+   "file": "real_028_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 16149
+  },
+  {
+   "file": "real_029_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 31295
+  },
+  {
+   "file": "real_030_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": null,
+   "ms": 45566
+  },
+  {
+   "file": "real_031_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [
+    "SKEW_CORRECTED"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 3391
+  },
+  {
+   "file": "real_032_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 19184
+  },
+  {
+   "file": "real_033_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 27370
+  },
+  {
+   "file": "real_034_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": null,
+   "ms": 41664
+  },
+  {
+   "file": "real_035_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [
+    "SKEW_CORRECTED"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 4841
+  },
+  {
+   "file": "real_036_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 18628
+  },
+  {
+   "file": "real_037_eaadhaar_front.jpg",
+   "kind": "eaadhaar_front",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 29304
+  },
+  {
+   "file": "real_038_eaadhaar_back.jpg",
+   "kind": "eaadhaar_back",
+   "status": "accepted",
+   "codes": [
+    "EAADHAAR_PAGE"
+   ],
+   "number_ok": true,
+   "dob_ok": null,
+   "ms": 14837
+  },
+  {
+   "file": "real_039_pan_card.jpg",
+   "kind": "pan_card",
+   "status": "accepted",
+   "codes": [
+    "SKEW_CORRECTED"
+   ],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 4319
+  },
+  {
+   "file": "real_040_epan_printout.jpg",
+   "kind": "epan_printout",
+   "status": "accepted",
+   "codes": [],
+   "number_ok": true,
+   "dob_ok": true,
+   "ms": 11738
+  }
+ ]
+}

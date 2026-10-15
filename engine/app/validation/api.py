@@ -144,6 +144,49 @@ def _try_eaadhaar_page(image_bytes: bytes, declared_type: str, t0: float, t: dic
     return ValidationOutcome(result=result, aadhaar_hmac=hmac_hex, phash=None, card_jpeg=jpeg, extracted=extracted)
 
 
+def _try_whole_photo(image_bytes: bytes, declared_type: str, t0: float, t: dict) -> ValidationOutcome | None:
+    """PAN / Voter ID fallback: OCR the whole (de-skewed by OCR, not warped) photo when no single card outline held
+    the declared document. Used only if the whole photo is clearly that document type."""
+    from app.validation.quality import decode
+    from app.validation.supporting import page_quality
+
+    q, q_issues, _ = page_quality(image_bytes)
+    q_issues = [i for i in q_issues if i.code != "GLARE"]
+    if any(i.severity == "blocking" for i in q_issues):
+        return None
+    decoded = decode(image_bytes)
+    if decoded is None:
+        return None
+    img, _ = decoded
+    scale = 2000 / max(img.shape[:2])
+    photo = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_CUBIC)
+    t1 = time.perf_counter()
+    tokens = ocr.read(photo)
+    detected, scores = classify(tokens, declared_type, t["classify_min_score"])
+    if detected != declared_type:
+        return None
+    ex = extract(detected, tokens)
+    if not ex.id_number:
+        return None
+    rr = apply_rules(detected, ex.id_number, ex.id_confidence, ex.id_subs, t["ocr_min_confidence_for_rules"],
+                     _second_reader(photo, detected))
+    issues = list(q_issues) + rr.issues
+    fields = {"id_number_display": rr.number, "name": ex.name, "dob": ex.dob, "gender": ex.gender,
+              "father_name": ex.father_name}
+    extracted = ExtractedDoc(doc_type=detected, declared_type=declared_type, name=ex.name, dob=ex.dob,
+                             gender=ex.gender, father_name=ex.father_name,
+                             id_last4=rr.number[-4:] if rr.number and len(rr.number) >= 4 else None)
+    mean_conf = float(np.mean([tk.conf for tk in tokens])) if tokens else 0.0
+    result = ValidationResult(doc_type=detected, declared_type=declared_type, status=doc_status(issues), issues=issues,
+                              quality=Quality(**q), fields=fields,
+                              ocr=OcrInfo(mean_confidence=round(mean_conf, 3),
+                                          id_number_confidence=None if ex.id_confidence is None
+                                          else round(ex.id_confidence, 3)),
+                              timings_ms=Timings(quality=0, ocr=_ms(t1), total=_ms(t0)))
+    small = cv2.resize(photo, None, fx=0.8, fy=0.8, interpolation=cv2.INTER_AREA)
+    return ValidationOutcome(result=result, card_jpeg=_jpeg(small), extracted=extracted)
+
+
 def _ocr_and_classify(card: np.ndarray, declared_type: str | None, min_score: float):
     tokens = ocr.read(card)
     detected, scores = classify(tokens, declared_type, min_score)
@@ -177,11 +220,18 @@ def validate_image(image_bytes: bytes, declared_type: str | None = None) -> Vali
         page = _try_eaadhaar_page(image_bytes, declared_type, t0, t)
         if page is not None:  # a full e-Aadhaar letter, not a bad card photo
             return page
+    if declared_type in ("pan", "voter_id") and codes and codes <= WHOLE_PHOTO_RETRY_CODES:
+        whole = _try_whole_photo(image_bytes, declared_type, t0, t)
+        if whole is not None:  # e.g. an e-PAN printout, where the card sits next to a card-shaped back panel
+            return whole
     return out
 
 
 # Card-path failures that may simply mean "this is a whole e-Aadhaar letter, not a card".
 PAGE_RETRY_CODES = {"CARD_NOT_FOUND", "CROPPED", "TOO_BRIGHT", "WRONG_DOC_TYPE", "UNKNOWN_DOC_TYPE", "UNREADABLE"}
+# PAN / Voter ID: only recognition failures (a card outline was found but held the wrong content, e.g. the back panel
+# of an e-PAN printout). A cropped or missing card is a capture problem and must still say "retake".
+WHOLE_PHOTO_RETRY_CODES = {"WRONG_DOC_TYPE", "UNKNOWN_DOC_TYPE", "UNREADABLE"}
 
 
 def _validate_card(image_bytes: bytes, declared_type: str | None, t0: float, t: dict, rep) -> ValidationOutcome:
