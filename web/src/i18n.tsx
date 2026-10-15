@@ -59,6 +59,7 @@ const en = {
   'counter.noSms': 'No messages yet',
   'counter.appIssues': 'Application issues',
 
+  'service.identity_verification': 'Identity verification letter',
   'service.community_certificate': 'Community certificate',
   'service.income_certificate': 'Income certificate',
   'service.nativity_certificate': 'Nativity certificate',
@@ -314,7 +315,7 @@ const en = {
   'v2.notices.severity.low': 'Low',
 
   'v2.services.title': 'Government schemes',
-  'v2.services.subtitle': 'Required documents for each scheme. SevaiCheck currently supports the 4 marked Open.',
+  'v2.services.subtitle': 'Required documents for each scheme. SevaiCheck currently supports the 5 marked Open.',
   'v2.services.table.scheme': 'Scheme',
   'v2.services.table.department': 'Department',
   'v2.services.table.documents': 'Required documents',
@@ -460,6 +461,7 @@ const ta: Record<Key, string> = {
   'counter.noSms': 'இன்னும் செய்திகள் இல்லை',
   'counter.appIssues': 'விண்ணப்பச் சிக்கல்கள்',
 
+  'service.identity_verification': 'அடையாளச் சரிபார்ப்புக் கடிதம்',
   'service.community_certificate': 'சமூகச் சான்றிதழ்',
   'service.income_certificate': 'வருமானச் சான்றிதழ்',
   'service.nativity_certificate': 'இருப்பிடச் சான்றிதழ்',
@@ -715,7 +717,7 @@ const ta: Record<Key, string> = {
   'v2.notices.severity.low': 'குறைவு',
 
   'v2.services.title': 'அரசு திட்டங்கள்',
-  'v2.services.subtitle': 'ஒவ்வொரு திட்டத்திற்கும் தேவையான ஆவணங்கள். SevaiCheck தற்போது "திறந்துள்ளது" என குறிக்கப்பட்ட 4 திட்டங்களை ஆதரிக்கிறது.',
+  'v2.services.subtitle': 'ஒவ்வொரு திட்டத்திற்கும் தேவையான ஆவணங்கள். SevaiCheck தற்போது "திறந்துள்ளது" என குறிக்கப்பட்ட 5 திட்டங்களை ஆதரிக்கிறது.',
   'v2.services.table.scheme': 'திட்டம்',
   'v2.services.table.department': 'துறை',
   'v2.services.table.documents': 'தேவையான ஆவணங்கள்',
