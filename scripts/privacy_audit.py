@@ -55,6 +55,12 @@ def scan_text(label: str, text: str, nums: set[str]) -> list[str]:
 
 
 def main() -> int:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _auth import staff_headers
+    auth = staff_headers(BASE, "TAH-SULUR-001")
+    opener = urllib.request.build_opener()
+    opener.addheaders = list(auth.items())
+    urllib.request.install_opener(opener)
     nums = known_numbers()
     print(f"checking against {len(nums)} generated Aadhaar numbers")
     leaks: list[str] = []

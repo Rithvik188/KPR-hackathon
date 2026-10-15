@@ -19,8 +19,14 @@ BASE = sys.argv[sys.argv.index("--base") + 1] if "--base" in sys.argv else "http
 FREE_FORM = {"evidence", "fields"}
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _auth import staff_headers  # noqa: E402
+
+AUTH: dict = {}
+
+
 def http(method: str, path: str, body: bytes | None = None, headers: dict | None = None):
-    req = urllib.request.Request(BASE + path, data=body, method=method, headers=headers or {})
+    req = urllib.request.Request(BASE + path, data=body, method=method, headers={**AUTH, **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return r.status, json.loads(r.read() or b"null")
@@ -102,6 +108,7 @@ def check(label: str, status: int, live, fix) -> None:
 
 
 def main() -> int:
+    AUTH.update(staff_headers(BASE, "TAH-SULUR-001"))  # officer view; ignored when AUTH_REQUIRED=0
     try:
         st, live = http("GET", "/api/health")
     except urllib.error.URLError as e:
