@@ -133,3 +133,16 @@ def test_demo_number_otp_not_locked_but_real_numbers_are(client):
     assert all(client.post("/api/auth/otp/request", json={"phone": "9876543221"}).status_code == 200 for _ in range(6))
     real = [client.post("/api/auth/otp/request", json={"phone": "9123455555"}).status_code for _ in range(5)]
     assert 429 in real
+
+
+def test_any_department_officer_and_any_centre_operator_can_sign_in_with_the_password(client):
+    for sid, role, office in [("VAO-POLLACHI-002", "vao", None), ("RI-ANNUR-011", "ri", None),
+                              ("TAH-VALPARAI-001", "tahsildar", None), ("ESV-POLLACHI-001", "operator", "off_pollachi_es"),
+                              ("ESV-POLLACHITO-007", "operator", "off_pollachi_to"),
+                              ("ESV-SULUR1-010", "operator", "off_sulur_es1")]:
+        r = client.post("/api/auth/staff", json={"staff_id": sid, "password": PW})
+        assert r.status_code == 200, (sid, r.text)
+        assert r.json()["role"] == role and r.json()["office_id"] == office
+    for sid in ("ESV-NOWHERE-001", "ABC-SULUR-001", "VAO-POLLACHI-02"):
+        assert client.post("/api/auth/staff", json={"staff_id": sid, "password": PW}).status_code == 401
+    assert client.post("/api/auth/staff", json={"staff_id": "VAO-POLLACHI-002", "password": "wrong"}).status_code == 401

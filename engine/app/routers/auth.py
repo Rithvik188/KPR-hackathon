@@ -4,7 +4,7 @@ import re
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
-from app.core.auth import (STAFF, Principal, check_otp, check_staff_password, issue_token, new_otp, rate_limited,
+from app.core.auth import (Principal, lookup_staff, check_otp, check_staff_password, issue_token, new_otp, rate_limited,
                            recent_count, record)
 from app.core.config import get_settings
 from app.core.errors import api_error
@@ -63,7 +63,7 @@ def staff_login(body: StaffLoginIn, request: Request) -> SessionOut:
     if not check_staff_password(staff_id, body.password):
         record(f"login-fail:{staff_id}")
         raise api_error(401, "BAD_CREDENTIALS", "Staff ID or password is incorrect")  # same message for both
-    s = STAFF[staff_id]
+    s = lookup_staff(staff_id)
     token, exp = issue_token(Principal(role=s["role"], sub=staff_id, name=s["name"], office_id=s["office_id"]))
     return SessionOut(token=token, role=s["role"], name=s["name"], office_id=s["office_id"], expires_at=exp)
 
