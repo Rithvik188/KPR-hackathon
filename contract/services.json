@@ -1,36 +1,132 @@
 {
   "_note": "Required documents per service (contract v1.4). Each entry in `required` is one slot; a list inside it means 'any one of'. ID-proof slots get full validation (quality + OCR + rules); supporting-document slots get page-quality checks plus a keyword sanity check, and the officer verifies their contents.",
-  "id_proof_types": ["aadhaar_front", "aadhaar_back", "pan", "voter_id"],
-  "supporting_types": ["parent_community_certificate", "birth_certificate", "income_proof", "address_proof"],
+  "id_proof_types": [
+    "aadhaar_front",
+    "aadhaar_back",
+    "pan",
+    "voter_id"
+  ],
+  "supporting_types": [
+    "parent_community_certificate",
+    "birth_certificate",
+    "income_proof",
+    "address_proof"
+  ],
   "services": {
+    "identity_verification": {
+      "code": "DEMO-01",
+      "name_en": "Identity Verification Letter",
+      "name_ta": "அடையாளச் சரிபார்ப்புக் கடிதம்",
+      "sla_days": 7,
+      "required": [
+        "aadhaar_front",
+        "aadhaar_back",
+        [
+          "pan",
+          "voter_id"
+        ]
+      ]
+    },
     "community_certificate": {
-      "code": "REV-101", "name_en": "Community Certificate", "name_ta": "சாதிச் சான்றிதழ்", "sla_days": 15,
-      "required": ["aadhaar_front", "aadhaar_back", ["pan", "voter_id"], "parent_community_certificate"]
+      "code": "REV-101",
+      "name_en": "Community Certificate",
+      "name_ta": "சாதிச் சான்றிதழ்",
+      "sla_days": 15,
+      "required": [
+        "aadhaar_front",
+        "aadhaar_back",
+        [
+          "pan",
+          "voter_id"
+        ],
+        "parent_community_certificate"
+      ]
     },
     "nativity_certificate": {
-      "code": "REV-102", "name_en": "Nativity Certificate", "name_ta": "இருப்பிடச் சான்றிதழ்", "sla_days": 7,
-      "required": ["aadhaar_front", "aadhaar_back", ["pan", "voter_id"], "birth_certificate"]
+      "code": "REV-102",
+      "name_en": "Nativity Certificate",
+      "name_ta": "இருப்பிடச் சான்றிதழ்",
+      "sla_days": 7,
+      "required": [
+        "aadhaar_front",
+        "aadhaar_back",
+        [
+          "pan",
+          "voter_id"
+        ],
+        "birth_certificate"
+      ]
     },
     "income_certificate": {
-      "code": "REV-103", "name_en": "Income Certificate", "name_ta": "வருமானச் சான்றிதழ்", "sla_days": 15,
-      "required": ["aadhaar_front", "aadhaar_back", ["pan", "voter_id"], "income_proof"]
+      "code": "REV-103",
+      "name_en": "Income Certificate",
+      "name_ta": "வருமானச் சான்றிதழ்",
+      "sla_days": 15,
+      "required": [
+        "aadhaar_front",
+        "aadhaar_back",
+        [
+          "pan",
+          "voter_id"
+        ],
+        "income_proof"
+      ]
     },
     "ration_card_update": {
-      "code": "CS-RC", "name_en": "Ration Card Update", "name_ta": "குடும்ப அட்டை திருத்தம்", "sla_days": 15,
-      "required": ["aadhaar_front", "aadhaar_back", ["pan", "voter_id"], "address_proof"]
+      "code": "CS-RC",
+      "name_en": "Ration Card Update",
+      "name_ta": "குடும்ப அட்டை திருத்தம்",
+      "sla_days": 15,
+      "required": [
+        "aadhaar_front",
+        "aadhaar_back",
+        [
+          "pan",
+          "voter_id"
+        ],
+        "address_proof"
+      ]
     }
   },
   "supporting_labels": {
-    "parent_community_certificate": {"en": "Parent's / sibling's community certificate", "ta": "பெற்றோர் / உடன்பிறந்தோரின் சாதிச் சான்றிதழ்"},
-    "birth_certificate": {"en": "Birth certificate", "ta": "பிறப்புச் சான்றிதழ்"},
-    "income_proof": {"en": "Income proof (salary certificate / payslip)", "ta": "வருமானச் சான்று (சம்பளச் சான்றிதழ் / ஊதியச் சீட்டு)"},
-    "address_proof": {"en": "Address proof (electricity bill / rent agreement)", "ta": "முகவரிச் சான்று (மின் கட்டண ரசீது / வாடகை ஒப்பந்தம்)"}
+    "parent_community_certificate": {
+      "en": "Parent's / sibling's community certificate",
+      "ta": "பெற்றோர் / உடன்பிறந்தோரின் சாதிச் சான்றிதழ்"
+    },
+    "birth_certificate": {
+      "en": "Birth certificate",
+      "ta": "பிறப்புச் சான்றிதழ்"
+    },
+    "income_proof": {
+      "en": "Income proof (salary certificate / payslip)",
+      "ta": "வருமானச் சான்று (சம்பளச் சான்றிதழ் / ஊதியச் சீட்டு)"
+    },
+    "address_proof": {
+      "en": "Address proof (electricity bill / rent agreement)",
+      "ta": "முகவரிச் சான்று (மின் கட்டண ரசீது / வாடகை ஒப்பந்தம்)"
+    }
   },
   "stages": {
     "_note": "Officer chain in e-District after the 2026 simplification (Deputy Tahsildar step removed). Hours are the per-stage SLA.",
-    "order": ["vao", "ri", "tahsildar"],
-    "vao": {"name_en": "Village Administrative Officer", "name_ta": "கிராம நிர்வாக அலுவலர்", "sla_hours": 48},
-    "ri": {"name_en": "Revenue Inspector", "name_ta": "வருவாய் ஆய்வாளர்", "sla_hours": 24},
-    "tahsildar": {"name_en": "Tahsildar", "name_ta": "வட்டாட்சியர்", "sla_hours": 24}
+    "order": [
+      "vao",
+      "ri",
+      "tahsildar"
+    ],
+    "vao": {
+      "name_en": "Village Administrative Officer",
+      "name_ta": "கிராம நிர்வாக அலுவலர்",
+      "sla_hours": 48
+    },
+    "ri": {
+      "name_en": "Revenue Inspector",
+      "name_ta": "வருவாய் ஆய்வாளர்",
+      "sla_hours": 24
+    },
+    "tahsildar": {
+      "name_en": "Tahsildar",
+      "name_ta": "வட்டாட்சியர்",
+      "sla_hours": 24
+    }
   }
 }

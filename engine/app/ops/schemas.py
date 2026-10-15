@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.validation.types import ConsistencyResult, DocStatus, DocType, Issue, ValidationResult
 
-Service = Literal["community_certificate", "income_certificate", "nativity_certificate", "ration_card_update"]
+Service = Literal["identity_verification", "community_certificate", "income_certificate", "nativity_certificate", "ration_card_update"]
 AppStatus = Literal["submitted", "needs_fix", "ready_for_officer", "approved", "rejected"]
 OfficerAction = Literal["approve", "reject", "request_fix", "forward"]
 Stage = Literal["vao", "ri", "tahsildar"]

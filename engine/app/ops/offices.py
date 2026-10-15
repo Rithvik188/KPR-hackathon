@@ -39,11 +39,10 @@ OFFICES: list[tuple[str, str, str, str, float, float]] = [
 
 
 def ensure_offices(session: Session) -> None:
-    """Insert the office list if the table is empty (runs on startup and before seeding)."""
-    if session.exec(select(Office).limit(1)).first() is not None:
-        return
+    """Upsert the office list (runs on startup and before seeding), so databases created before an office changed
+    (e.g. the govt/private split) pick up the current names and types. Fix by P1 at P2's request (comms #0011)."""
     for id_, name, type_, taluk, lat, lng in OFFICES:
-        session.add(Office(id=id_, name=name, type=type_, taluk=taluk, lat=lat, lng=lng))
+        session.merge(Office(id=id_, name=name, type=type_, taluk=taluk, lat=lat, lng=lng))
     session.commit()
 
 
