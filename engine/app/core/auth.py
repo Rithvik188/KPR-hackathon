@@ -140,6 +140,21 @@ _rl_lock = threading.Lock()
 _hits: dict[str, deque] = defaultdict(deque)
 
 
+def recent_count(key: str, window_s: int) -> int:
+    """Events recorded for `key` in the last `window_s` seconds (without recording a new one)."""
+    now = time.time()
+    with _rl_lock:
+        q = _hits[key]
+        while q and q[0] < now - window_s:
+            q.popleft()
+        return len(q)
+
+
+def record(key: str) -> None:
+    with _rl_lock:
+        _hits[key].append(time.time())
+
+
 def rate_limited(key: str, limit: int, window_s: int) -> bool:
     """True if `key` exceeded `limit` events in the last `window_s` seconds (sliding window, in memory)."""
     now = time.time()

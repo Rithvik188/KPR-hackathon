@@ -116,3 +116,20 @@ def test_random_can_ids(client):
             for i in range(3)]
     nums = sorted(int(c[-6:]) for c in cans)
     assert not (nums[1] == nums[0] + 1 and nums[2] == nums[1] + 1)  # not sequential
+
+
+def test_successful_logins_do_not_lock_the_account(client):
+    for _ in range(8):  # rehearsals: many good sign-ins in a row must keep working
+        assert client.post("/api/auth/staff", json={"staff_id": "VAO-SULUR-014", "password": PW}).status_code == 200
+
+
+def test_failed_logins_lock_that_id(client):
+    codes = [client.post("/api/auth/staff", json={"staff_id": "TAH-SULUR-001", "password": "nope"}).status_code
+             for _ in range(7)]
+    assert codes[:5] == [401] * 5 and 429 in codes[5:]
+
+
+def test_demo_number_otp_not_locked_but_real_numbers_are(client):
+    assert all(client.post("/api/auth/otp/request", json={"phone": "9876543221"}).status_code == 200 for _ in range(6))
+    real = [client.post("/api/auth/otp/request", json={"phone": "9123455555"}).status_code for _ in range(5)]
+    assert 429 in real
