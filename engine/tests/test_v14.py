@@ -76,3 +76,24 @@ def test_supporting_document_shape():
 def test_blurry_page_skips_ocr():
     r = validate_image(Path(DEMO_DIR / "13_birth_certificate_blurry.jpg").read_bytes(), "birth_certificate").result
     assert r.status == "fixable" and "BLUR" in codes(r) and r.ocr is None
+
+
+@pytest.mark.skipif(not IMG, reason="demo images not generated")
+def test_eaadhaar_letter_fills_both_slots_without_the_vid():
+    data = (DEMO_DIR / "15_eaadhaar_letter.jpg").read_bytes()
+    front = validate_image(data, "aadhaar_front")
+    back = validate_image(data, "aadhaar_back")
+    for out, slot in ((front, "aadhaar_front"), (back, "aadhaar_back")):
+        r = out.result
+        assert r.status == "accepted" and r.doc_type == slot and "EAADHAAR_PAGE" in codes(r)
+        assert r.fields["id_number_display"].startswith("XXXX XXXX ")
+    assert front.aadhaar_hmac == back.aadhaar_hmac  # same person, same number on both
+    front_card = validate_image((DEMO_DIR / "02_aadhaar_front_clean.jpg").read_bytes(), "aadhaar_front")
+    assert front.aadhaar_hmac == front_card.aadhaar_hmac  # the letter belongs to the demo citizen
+    assert front.result.fields["dob"] == "1998-04-12"
+
+
+def test_wrong_length_number_is_unreadable_not_invalid():
+    from app.validation.rules import apply_rules
+    rr = apply_rules("aadhaar_front", "23456789012", 0.95, 0, 0.7)  # 11 digits read
+    assert [i.code for i in rr.issues] == ["UNREADABLE"]

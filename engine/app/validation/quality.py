@@ -107,10 +107,49 @@ def _candidate_masks(small: np.ndarray) -> list[np.ndarray]:
     return [cv2.morphologyEx(cv2.morphologyEx(m, cv2.MORPH_OPEN, k), cv2.MORPH_CLOSE, k) for m in masks]
 
 
+def _card_shaped_quads(small: np.ndarray, min_area_frac: float) -> list[tuple[np.ndarray, float]]:
+    """Rectangles with ID-card proportions found from physical edges.
+
+    Real cards have coloured header bands, emblems and holograms, so colour/brightness masks can split a card in
+    two (e.g. the white body without its header). The card's outline is still a crisp edge, so look for closed
+    4-sided contours whose aspect ratio is close to ID-1, at several edge sensitivities.
+    """
+    gray = cv2.GaussianBlur(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY), (5, 5), 0)
+    img_area = small.shape[0] * small.shape[1]
+    out = []
+    for lo, hi in ((20, 60), (40, 120), (70, 200)):
+        edges = cv2.Canny(gray, lo, hi)
+        for k in (5, 11):
+            closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (k, k)))
+            cnts, _ = cv2.findContours(closed, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            for cnt in cnts:
+                area = cv2.contourArea(cnt)
+                if area < min_area_frac * img_area or area > 0.995 * img_area:
+                    continue
+                peri = cv2.arcLength(cnt, True)
+                for eps in (0.02, 0.035, 0.05):
+                    approx = cv2.approxPolyDP(cnt, eps * peri, True)
+                    if len(approx) == 4 and cv2.isContourConvex(approx):
+                        quad = order_quad(approx.reshape(4, 2).astype(np.float32))
+                        frac = cv2.contourArea(quad) / img_area
+                        h, w = small.shape[:2]
+                        hugging = sum(1 for x, y in quad if x < 4 or y < 4 or x > w - 5 or y > h - 5)
+                        # not the photo frame itself or a background blob filling it
+                        if hugging < 2 and frac < 0.92 and abs(_aspect(quad) - CARD_RATIO) / CARD_RATIO <= 0.12:
+                            out.append((quad, frac))
+                        break
+    return out
+
+
 def find_card(small: np.ndarray, min_area_frac: float) -> tuple[np.ndarray | None, float]:
     """Best card quad in `small` coords and its area fraction."""
     img_area = small.shape[0] * small.shape[1]
     best, best_score, best_frac = None, -1.0, 0.0
+    for quad, frac in _card_shaped_quads(small, min_area_frac):
+        ar_pen = max(0.0, 1 - abs(_aspect(quad) - CARD_RATIO) / CARD_RATIO)
+        score = frac * ar_pen ** 3 * 1.15  # card-shaped outline from real edges: preferred over mask blobs
+        if score > best_score:
+            best, best_score, best_frac = quad, score, frac
     for mask in _candidate_masks(small):
         cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for cnt in sorted(cnts, key=cv2.contourArea, reverse=True)[:3]:
@@ -158,7 +197,10 @@ def quality_codes(m: dict, t: dict) -> list[str]:
     if not m.get("card_found"):
         return ["CARD_NOT_FOUND"]
     codes = []
-    if m["edge_dist"] <= t["crop_border_px"] or m["area_frac"] > 0.97 or m["aspect_dev"] > t["crop_aspect_tol"]:
+    # A tightly framed phone photo can touch the frame edge with the whole card visible: that only counts as
+    # CROPPED when the visible shape is also not card-shaped (a cut-off card loses its ID-1 proportions).
+    touching = m["edge_dist"] <= t["crop_border_px"] and m["aspect_dev"] > t.get("crop_edge_aspect_tol", 0.0)
+    if touching or m["area_frac"] > 0.97 or m["aspect_dev"] > t["crop_aspect_tol"]:
         codes.append("CROPPED")
     if m["card_width_px"] < t["min_card_width_px"]:
         codes.append("LOW_RESOLUTION")

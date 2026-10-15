@@ -1,8 +1,9 @@
 # SevaiCheck API Contract
 
-**Version: 1.5** (bump on every change; see the CLAUDE.md section on the contract change protocol)
+**Version: 1.6** (bump on every change; see the CLAUDE.md section on the contract change protocol)
 
 **Changelog**
+- 1.6 (additive): full **e-Aadhaar letter** support. An A4 e-Aadhaar page uploaded to either Aadhaar slot is validated as a page (number taken from its repeated printings, never the VID) and gets the info issue `EAADHAAR_PAGE`; `doc_type` = the declared slot. The same letter may be uploaded to both slots.
 - 1.5 (additive): CAN citizen profiles (`Citizen` table, `Application.can_id`, `POST /api/citizens`, `GET /api/citizens/{can}`); `OfficeType` adds `esevai_centre_private`.
 - 1.4 (additive): service-specific supporting documents (`contract/services.json`, 4 new DocTypes); form-vs-document check (`citizen_dob` on applications, `form` argument to `check_consistency`, `ConsistencyResult.form_check`, issue codes `FORM_NAME_MISMATCH`, `FORM_NAME_VARIANT`, `FORM_DOB_MISMATCH`, `CONTENT_NOT_VERIFIED`); stage-aware officer chain VAO → RI → Tahsildar (`stage`, `stage_due_at`, `stage_sla_hours_left`, OfficerAction `forward`, PATCH `role`, `GET /applications?stage=`).
 - 1.3: `ApplicationDetail.documents[].declared_type` (string or null).
@@ -70,6 +71,7 @@ Messages (`msg_en`, `msg_ta`) live in `contract/messages.json`, and the backend 
 | `FORM_NAME_VARIANT` (v1.4) | form | warning | officer | (application level) |
 | `FORM_DOB_MISMATCH` (v1.4) | form | blocking | citizen | (application level) |
 | `CONTENT_NOT_VERIFIED` (v1.4) | supporting doc | info | officer | (no effect) |
+| `EAADHAAR_PAGE` (v1.6) | quality | info | officer | (no effect) |
 
 **DocStatus rule:**
 - `invalid` if there is any `INVALID_*` issue.

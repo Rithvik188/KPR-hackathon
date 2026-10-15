@@ -108,6 +108,9 @@ def _find(tokens: list[OcrToken], *keywords: str, min_ratio: int = 85) -> OcrTok
 def _aadhaar_number(lns: list[list[OcrToken]]) -> tuple[str | None, float | None, int, list]:
     """Bottom-most line holding exactly 12 digits (digit-like tokens joined across the line)."""
     for ln in reversed(lns):
+        line_text = " ".join(t.text for t in ln).upper()
+        if re.search(r"VID|ENROL|MOBILE|PHONE|PIN", line_text):
+            continue  # never take the 16-digit VID, enrolment or phone numbers for the Aadhaar number
         parts = [t for t in ln if digit_ratio(t.text) >= 0.6]
         if not parts:
             continue
@@ -116,8 +119,8 @@ def _aadhaar_number(lns: list[list[OcrToken]]) -> tuple[str | None, float | None
         if len(digits) == 12 or (m and len(m.group(1)) == 12):
             return digits[-12:] if len(digits) == 12 else m.group(1), min(t.conf for t in parts), subs, \
                 [t.bbox for t in parts]
-        if 10 <= len(digits) <= 14:  # present but mis-read length -> rules decide (INVALID_FORMAT / UNREADABLE)
-            return digits, min(t.conf for t in parts), subs, [t.bbox for t in parts]
+        # A number-like line of the wrong length is a reading failure, not an invalid card: keep looking, and
+        # if nothing has exactly 12 digits the rules report UNREADABLE (retake), never INVALID_FORMAT.
     return None, None, 0, []
 
 
