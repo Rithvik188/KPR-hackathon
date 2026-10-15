@@ -4,13 +4,15 @@ import re
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
-from app.core.auth import STAFF, Principal, check_otp, check_staff_password, issue_token, new_otp, rate_limited
+from app.core.auth import (STAFF, Principal, check_otp, check_staff_password, issue_token, new_otp, rate_limited,
+                           recent_count, record)
 from app.core.config import get_settings
 from app.core.errors import api_error
 from app.core.security import mask_phone, phone_hmac
 
 router = APIRouter(tags=["auth"])
 _PHONE = re.compile(r"^[6-9]\d{9}$")
+DEMO_CITIZEN_PHONE = "9876543221"  # the portal's "Use a demo account" number
 
 
 class StaffLoginIn(BaseModel):
@@ -54,9 +56,12 @@ def _phone(raw: str) -> str:
 @router.post("/auth/staff", response_model=SessionOut)
 def staff_login(body: StaffLoginIn, request: Request) -> SessionOut:
     staff_id = body.staff_id.strip().upper()
-    if rate_limited(f"login:{_client(request)}", 10, 60) or rate_limited(f"login-id:{staff_id}", 5, 300):
+    # Lockout counts only FAILED attempts per staff ID (stops password guessing without locking out real users);
+    # all attempts are still capped per IP.
+    if rate_limited(f"login:{_client(request)}", 20, 60) or recent_count(f"login-fail:{staff_id}", 300) >= 5:
         raise api_error(429, "TOO_MANY_ATTEMPTS", "Too many sign-in attempts. Wait a few minutes and try again.")
     if not check_staff_password(staff_id, body.password):
+        record(f"login-fail:{staff_id}")
         raise api_error(401, "BAD_CREDENTIALS", "Staff ID or password is incorrect")  # same message for both
     s = STAFF[staff_id]
     token, exp = issue_token(Principal(role=s["role"], sub=staff_id, name=s["name"], office_id=s["office_id"]))
@@ -66,7 +71,11 @@ def staff_login(body: StaffLoginIn, request: Request) -> SessionOut:
 @router.post("/auth/otp/request", response_model=OtpSentOut)
 def otp_request(body: OtpRequestIn, request: Request) -> OtpSentOut:
     digits = _phone(body.phone)
-    if rate_limited(f"otp:{_client(request)}", 10, 600) or rate_limited(f"otp-phone:{digits[-4:]}", 3, 600):
+    # Demo mode only (no SMS gateway, documented in SECURITY.md): the shared demo number gets a higher ceiling so
+    # rehearsals and judges don't lock it. Real numbers keep 3 OTPs per 10 minutes.
+    demo_number = get_settings().demo_otp_in_response and digits == DEMO_CITIZEN_PHONE
+    per_phone = 30 if demo_number else 3
+    if rate_limited(f"otp:{_client(request)}", 20, 600) or rate_limited(f"otp-phone:{digits}", per_phone, 600):
         raise api_error(429, "TOO_MANY_ATTEMPTS", "Too many OTP requests. Wait a few minutes and try again.")
     code = new_otp(phone_hmac(digits))
     demo = code if get_settings().demo_otp_in_response else None
