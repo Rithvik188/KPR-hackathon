@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-14T23:58:16Z",
+ "generated_at": "2026-10-15T00:16:12Z",
  "source": "evaluation",
  "dataset": {
   "tune_n": 300,
@@ -39,8 +39,8 @@
   {
    "code": "TOO_BRIGHT",
    "precision": 1.0,
-   "recall": 1.0,
-   "f1": 1.0,
+   "recall": 0.85,
+   "f1": 0.919,
    "support": 20
   },
   {
@@ -67,7 +67,7 @@
  ],
  "doc_type_accuracy": 1.0,
  "field_accuracy": {
-  "aadhaar_number": 0.962,
+  "aadhaar_number": 0.981,
   "pan_number": 1.0,
   "epic_number": 0.971,
   "dob": 1.0,
@@ -75,10 +75,10 @@
  },
  "false_invalid_rate": 0.0,
  "latency_ms": {
-  "quality_p50": 90,
-  "quality_p95": 144,
-  "full_p50": 1580,
-  "full_p95": 3098
+  "quality_p50": 119,
+  "quality_p95": 241,
+  "full_p50": 1656,
+  "full_p95": 6856
  },
  "consistency": {
   "labels": [

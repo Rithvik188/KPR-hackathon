@@ -81,26 +81,38 @@ failures are in `engine/evaluation/report.md`.
 
 | Code | Precision | Recall | F1 | Support |
 |---|---|---|---|---|
-| CROPPED | 0.97 | 1.00 | 0.99 | 35 |
-| BLUR | 0.78 | 0.93 | 0.85 | 27 |
+| CROPPED | 1.00 | 1.00 | 1.00 | 35 |
+| BLUR | 0.88 | 0.81 | 0.85 | 27 |
 | GLARE | 1.00 | 1.00 | 1.00 | 33 |
 | TOO_DARK | 1.00 | 1.00 | 1.00 | 27 |
-| TOO_BRIGHT | 1.00 | 0.95 | 0.97 | 20 |
+| TOO_BRIGHT | 1.00 | 0.85 | 0.92 | 20 |
 | LOW_RESOLUTION | 1.00 | 1.00 | 1.00 | 27 |
 | WRONG_DOC_TYPE | 1.00 | 1.00 | 1.00 | 19 |
-| INVALID_CHECKSUM | 1.00 | 1.00 | 1.00 | 18 |
+| INVALID_CHECKSUM | 1.00 | 0.94 | 0.97 | 18 |
 
 | Metric | Value |
 |---|---|
 | Document type accuracy (no quality errors) | 100% |
-| Field accuracy: Aadhaar number / DOB / name / EPIC / PAN | 100% / 100% / 97.8% / 97.1% / 95.7% |
+| Field accuracy: Aadhaar number / DOB / name / EPIC / PAN | 98.1% / 100% / 96.8% / 97.1% / 100% |
 | Name consistency on held-out sets | 34 / 34 tiers correct (11 match, 12 likely, 11 mismatch) |
 | Aadhaar back missing flagged | 4 / 4 |
-| Latency, quality gate (p50 / p95) | 72 ms / 103 ms |
-| Latency, full validation (p50 / p95, CPU) | 1.4 s / 3.0 s |
+| Latency, quality gate (p50 / p95) | 119 ms / 241 ms |
+| Latency, full validation (p50 / p95, CPU) | 1.7 s / 6.9 s (p95 includes the e-Aadhaar page fallback on failed cards) |
 
-Most BLUR false flags are on photos that also have another real defect (cropped, glare, low
-resolution), so the citizen is asked to retake either way.
+Most BLUR false flags are on photos that also have another real defect, so the citizen is asked to retake either way.
+INVALID_CHECKSUM recall is 0.94 because one invalid number was read with low confidence and returned as "retake"
+instead of "invalid": by design, uncertainty always resolves to a retake, never to a wrong "invalid".
+
+## Real-photo test (phone, real documents) and what changed
+
+A phone test with real Aadhaar/PAN cards failed with false "cropped" errors, and showed that most citizens bring the
+printed **e-Aadhaar letter** (A4, bilingual Tamil + English, QR codes, 16-digit VID, enrolment number), not a card. Fixes:
+- **Card-shaped outline detector** (crisp ID-1 rectangles from real edges) and a crop rule that only fires when a card
+  touches the frame edge *and* has lost its card shape.
+- **e-Aadhaar letter mode:** page-level quality, OCR at higher resolution, the Aadhaar number taken from its repeated
+  printings (never the VID), the English name above `DOB` with Tamil lines skipped. The letter fills either Aadhaar slot.
+  10/10 synthetic letters read correctly with 0 false invalids; real letters still need validation in a pilot.
+- A number read with the wrong length is now a retake, never `INVALID_FORMAT`.
 
 ## Limitations (stated plainly)
 
