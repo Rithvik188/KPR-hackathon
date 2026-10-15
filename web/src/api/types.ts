@@ -12,7 +12,12 @@ export type AlertRule = 'REJECT_SPIKE' | 'SLA_BREACH' | 'BACKLOG_GROWTH' | 'DUPL
 export type AlertSeverity = 'high' | 'medium' | 'low'
 export type AlertStatus = 'open' | 'acknowledged'
 export type OfficeType = 'taluk_office' | 'esevai_centre' | 'esevai_centre_private'
-export type Service = 'community_certificate' | 'income_certificate' | 'nativity_certificate' | 'ration_card_update'
+export type Service =
+  | 'identity_verification' // made-up demo scheme: ID proofs only, no supporting document (contract v1.6)
+  | 'community_certificate'
+  | 'income_certificate'
+  | 'nativity_certificate'
+  | 'ration_card_update'
 export type IssueCategory = 'scanner_problem' | 'long_wait' | 'wrong_rejection' | 'other'
 export type ReporterRole = 'citizen' | 'operator' | 'officer'
 export type OfficerAction = 'approve' | 'reject' | 'request_fix' | 'forward'
