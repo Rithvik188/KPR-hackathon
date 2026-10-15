@@ -1,11 +1,11 @@
 # SevaiCheck held-out evaluation
 
-Generated 2026-10-14T23:58:16Z on the **test split only** (300 images, background set B) and 34 held-out document sets. Thresholds were tuned on a separate split (background set A).
+Generated 2026-10-15T00:16:12Z on the **test split only** (300 images, background set B) and 34 held-out document sets. Thresholds were tuned on a separate split (background set A).
 
 ## Key trust metric
 
 - **False-invalid rate: 0.00%** (0 of 282 genuine cards were marked `invalid`).
-- Clean genuine cards accepted first time: 96.4% (111 cards).
+- Clean genuine cards accepted first time: 97.3% (111 cards).
 
 ## Detection per code
 
@@ -15,7 +15,7 @@ Generated 2026-10-14T23:58:16Z on the **test split only** (300 images, backgroun
 | BLUR | 0.88 | 0.81 | 0.85 | 27 | 3 |
 | GLARE | 1.00 | 1.00 | 1.00 | 33 | 0 |
 | TOO_DARK | 1.00 | 1.00 | 1.00 | 27 | 0 |
-| TOO_BRIGHT | 1.00 | 1.00 | 1.00 | 20 | 0 |
+| TOO_BRIGHT | 1.00 | 0.85 | 0.92 | 20 | 0 |
 | LOW_RESOLUTION | 1.00 | 1.00 | 1.00 | 27 | 0 |
 | WRONG_DOC_TYPE | 1.00 | 1.00 | 1.00 | 19 | 0 |
 | INVALID_CHECKSUM | 1.00 | 0.94 | 0.97 | 18 | 0 |
@@ -26,7 +26,7 @@ Document-type accuracy (images without quality errors): **100.0%** (n=148)
 
 | Field | Accuracy | n |
 |---|---|---|
-| aadhaar_number | 96.2% | 53 |
+| aadhaar_number | 98.1% | 53 |
 | pan_number | 100.0% | 23 |
 | epic_number | 97.1% | 35 |
 | dob | 100.0% | 93 |
@@ -36,8 +36,8 @@ Names are compared ignoring spaces (rapidfuzz ratio >= 95 on letters only), beca
 
 ## Latency (sequential, single process)
 
-- Quality gate: p50 90 ms, p95 144 ms
-- Full validation (quality + OCR + rules): p50 1580 ms, p95 3098 ms
+- Quality gate: p50 119 ms, p95 241 ms
+- Full validation (quality + OCR + rules): p50 1656 ms, p95 6856 ms
 
 ## Consistency (held-out sets)
 
@@ -54,16 +54,16 @@ Names are compared ignoring spaces (rapidfuzz ratio >= 95 on letters only), beca
 
 | File | Doc | True codes | Predicted | Status |
 |---|---|---|---|---|
-| img_00020.jpg | aadhaar_back | INVALID_CHECKSUM | UNREADABLE | fixable |
+| img_00020.jpg | aadhaar_back | INVALID_CHECKSUM | EAADHAAR_PAGE, UNREADABLE | fixable |
 | img_00029.jpg | aadhaar_back | BLUR | - | accepted |
+| img_00040.jpg | aadhaar_back | TOO_BRIGHT | EAADHAAR_PAGE, UNREADABLE | fixable |
 | img_00070.jpg | voter_id | BLUR | - | accepted |
 | img_00102.jpg | aadhaar_back | BLUR | - | accepted |
+| img_00111.jpg | aadhaar_back | TOO_BRIGHT | EAADHAAR_PAGE | accepted |
 | img_00132.jpg | voter_id | BLUR | - | accepted |
+| img_00134.jpg | aadhaar_back | TOO_BRIGHT | EAADHAAR_PAGE | accepted |
 | img_00238.jpg | voter_id | BLUR | - | accepted |
 | img_00038.jpg | aadhaar_front | CROPPED, GLARE | BLUR, CROPPED, GLARE | fixable |
-| img_00050.jpg | aadhaar_back | - | UNREADABLE | fixable |
-| img_00078.jpg | voter_id | - | UNREADABLE | fixable |
-| img_00120.jpg | pan | CROPPED, TOO_BRIGHT | BLUR, CROPPED, TOO_BRIGHT | fixable |
 
 
 ## Honest limitations
