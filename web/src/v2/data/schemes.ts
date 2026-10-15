@@ -1,6 +1,7 @@
 // Realistic TN e-Sevai / e-District scheme directory for the citizen portal's Schemes page.
-// The 4 schemes also present in contract/services.json (the ones SevaiCheck validates) are "open" and
-// link into the Apply flow; everything else is informational only ("coming soon").
+// The 5 schemes also present in contract/services.json (the ones SevaiCheck validates) are "open" and
+// link into the Apply flow; everything else is informational only ("coming soon"). The first one,
+// DEMO-01, is made up for the demo: it needs only the ID proofs (no supporting document).
 import type { Service } from '@/api/types'
 
 export interface SchemeInfo {
@@ -11,11 +12,17 @@ export interface SchemeInfo {
   documentsEn: string[]
   documentsTa: string[]
   slaDays: number
-  /** Present only for the 4 schemes SevaiCheck supports; links the row into Apply. */
+  /** Present only for the 5 schemes SevaiCheck supports; links the row into Apply. */
   service?: Service
 }
 
 export const SCHEMES: SchemeInfo[] = [
+  {
+    code: 'DEMO-01', nameEn: 'Identity Verification Letter', nameTa: 'அடையாளச் சரிபார்ப்புக் கடிதம்', deptKey: 'v2.services.deptRevenue',
+    documentsEn: ['Aadhaar card (front and back)', 'PAN card or Voter ID'],
+    documentsTa: ['ஆதார் அட்டை (முன் மற்றும் பின்)', 'பான் அட்டை அல்லது வாக்காளர் அடையாள அட்டை'],
+    slaDays: 7, service: 'identity_verification',
+  },
   {
     code: 'REV-101', nameEn: 'Community Certificate', nameTa: 'சமூகச் சான்றிதழ்', deptKey: 'v2.services.deptRevenue',
     documentsEn: ['Aadhaar card', "Parent's / sibling's community certificate"],

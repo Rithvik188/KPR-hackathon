@@ -3,14 +3,18 @@ import data from '@contract/services.json'
 
 import type { Service, Stage, SupportingType } from '@/api/types'
 
+type ServiceDef = { code: string; required: (string | string[])[] }
+// Indexed loosely so a service the contract file doesn't list yet degrades to "ID proofs only, no code".
+const SERVICES = data.services as Record<string, ServiceDef | undefined>
+
 export function supportingTypeFor(service: Service): SupportingType | null {
-  const required = (data.services[service]?.required ?? []) as (string | string[])[]
+  const required = SERVICES[service]?.required ?? []
   const found = required.find((slot): slot is string => typeof slot === 'string' && data.supporting_types.includes(slot))
   return (found as SupportingType | undefined) ?? null
 }
 
 export function serviceCode(service: Service): string {
-  return data.services[service]?.code ?? ''
+  return SERVICES[service]?.code ?? ''
 }
 
 export const STAGE_ORDER = data.stages.order as Stage[]
